@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="migrations" xmlns:git="antlib:com.rimerosolutions.ant.git">
+    <property name="db.migration.dir" value="${basedir}/src/main/resources/db/migration"/>
+    <property name="project.root.dir" value="${basedir}"/>
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+    <target name="prefix-new-migrations">
+        <foreach target="rename-file" param="the-file">
+            <param name="db.migration.version" value="${db.migration.version}"/>
+            <path>
+                <!-- The hardcoded directory containing the migrations -->
+                <fileset dir="${db.migration.dir}" casesensitive="no" includes="*.sql">
+                    <!-- Exclude any migration files which have already been prefixed -->
+                    <not>
+                        <filename regex="${db.migration.version}\d+_\d+__.*" casesensitive="true"/>
+                    </not>
+                </fileset>
+            </path>
+        </foreach>
+
+        <!-- Optional. Only Call this target if you want to add files to git staging area. THIS CALL DOES NOT COMMIT THE FILES -->
+        <antcall target="add-files-to-git"/>
+    </target>
+
+    <target name="rename-file">
+
+        <tstamp>
+            <format property="time.stamp" pattern="yyyyMMddHHmmssSSS"/>
+        </tstamp>
+        <dirname property="dir.name" file="${the-file}"/>
+        <basename property="file.name" file="${the-file}"/>
+
+        <!-- Renames my_migration.sql to to something line V20130704144750766__1_my_migration.sql so that Spring Flyway
+        db migration too will automagically pick it up-->
+        <property name="db.migration.filename" value="${dir.name}${file.separator}${db.migration.version}${time.stamp}_1__${file.name}"/>
+        <move file="${the-file}" tofile="${db.migration.filename}"/>
+        <property name="db.migration.dir" value="${basedir}/db/migration"/>
+        <!-- Sleep to prevent prefix conflicts when renaming multiple files -->
+        <sleep seconds="1"/>
+    </target>
+
+    <!-- ADDS FILES TO GIT STAGING AREA. IT DOES NOT COMMIT THE FILES-->
+    <target name="add-files-to-git">
+        <echo message="Add files to git ..."/>
+        <taskdef uri="antlib:com.rimerosolutions.ant.git"
+                 resource="com/rimerosolutions/ant/git/jgit-ant-lib.xml"
+                 classpath="${plugin_classpath}"/>
+
+        <!--  AS We are only add files to git and not going to commit or push anything, we set dummy Git setting
+        required by the git:git task -->
+        <git:settings refId="git.test"
+                      username="test"
+                      password="testpassword"
+                      name="test"
+                      email="test@yahoo.com"/>
+
+        <echo message="Git Directory: ${basedir} " />
+        <git:git directory="${user.dir}" verbose="true" settingsRef="git.test">
+            <git:add>
+                <fileset dir="${db.migration.dir}"/>
+            </git:add>
+            <!--<git:commit message="Initial commit" revCommitIdProperty="revcommit"/>-->
+        </git:git>
+    </target>
+</project>
