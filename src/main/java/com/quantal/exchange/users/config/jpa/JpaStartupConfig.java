@@ -20,7 +20,7 @@ import javax.sql.DataSource;
 @EnableJpaRepositories(basePackages = "com.quantal.exchange.users")
 @EntityScan("com.quantal.exchange.users.models")
 @EnableTransactionManagement
-public class StartupConfig {
+public class JpaStartupConfig {
 
 
   private Environment env;
@@ -32,7 +32,7 @@ public class StartupConfig {
   private final String DB_PASSWORD;
 
   @Autowired
-  public StartupConfig(Environment env){
+  public JpaStartupConfig(Environment env){
     this.env = env;
     DB_URL = env.getProperty("spring.datasource.url");
     DB_USERNAME = env.getProperty("spring.datasource.username");
