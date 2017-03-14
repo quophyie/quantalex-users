@@ -5,10 +5,9 @@ import com.quantal.exchange.users.facades.UserManagementFacade;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by dman on 08/03/2017.
@@ -28,6 +27,11 @@ public class UserController {
   @PostMapping(value="", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<?> createUser(@RequestBody UserDto userDto){
     return userManagementFacade.saveOrUpdateUser(userDto);
+  }
+
+  @GetMapping(value="")
+  public CompletableFuture<String> getFunnyCatAsync(){
+    return userManagementFacade.getFunnyCat();
   }
 
 

@@ -4,6 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.quantal.exchange.users.convertors.LocalDateConverter;
 import com.quantal.exchange.users.convertors.LocalDateTimeConverter;
+import com.quantal.exchange.users.services.api.GiphyApiService;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,10 +23,11 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import retrofit2.Retrofit;
+import retrofit2.adapter.java8.Java8CallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by dman on 08/03/2017.
@@ -65,6 +72,45 @@ public class WebStartupConfig extends WebMvcConfigurerAdapter {
     registry.addConverter(new LocalDateConverter("yyyy-MM-dd"));
     registry.addConverter(new LocalDateTimeConverter("yyyy-MM-dd'T'HH:mm:ss.SSS"));
   }
+
+  @Bean
+  public OkHttpClient okHttpClient() {
+    OkHttpClient.Builder builder = new OkHttpClient.Builder();;
+    Logger logger = LoggerFactory.getLogger("LoggingInterceptor");
+
+    builder.interceptors().add(chain -> {
+      Request request = chain.request();
+
+      long t1 = System.nanoTime();
+      logger.info(String.format("Sending request %s on %s%n%s",
+              request.url(), chain.connection(), request.headers()));
+
+      Response response = chain.proceed(request);
+
+      long t2 = System.nanoTime();
+      logger.info(String.format("Received response for %s in %.1fms%n%s",
+              response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+
+      return response;
+    });
+
+    OkHttpClient client = builder.build();
+    return client;
+  }
+
+  @Bean
+  public Retrofit retrofit(OkHttpClient client) {
+    return new Retrofit.Builder()
+            .baseUrl("https://testapi")
+            .addConverterFactory(ScalarsConverterFactory.create())
+            //.addConverterFactory(new StringConverterFactory())
+            //.addConverterFactory(JacksonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(Java8CallAdapterFactory.create())
+            .client(client)
+            .build();
+  }
+
 
   @Bean
   public MessageSource messageSource() {
