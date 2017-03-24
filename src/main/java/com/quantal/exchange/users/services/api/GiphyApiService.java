@@ -22,5 +22,8 @@ public interface GiphyApiService {
     }*/
 
     @GET("http://api.giphy.com/v1/gifs/search")
-        CompletableFuture<String> getGiphy(@Query("q") String query, @Query("api_key") String apiKey);
+    CompletableFuture<String> getGiphy(@Query("q") String query, @Query("api_key") String apiKey);
+
+    @GET("http://pokeapi.co/api/v2/ability/ ")
+    CompletableFuture<String> getPokemon(@Query("limit") int limit, @Query("offset") int offset);
 }
