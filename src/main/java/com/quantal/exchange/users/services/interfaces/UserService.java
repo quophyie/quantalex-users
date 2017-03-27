@@ -8,5 +8,11 @@ import com.quantal.exchange.users.models.User;
 public interface UserService {
 
   User saveOrUpdate(User user);
+  User findOneByEmail(String email);
+
+
+
+
+
 
 }

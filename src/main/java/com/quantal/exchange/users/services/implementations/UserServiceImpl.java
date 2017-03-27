@@ -25,4 +25,10 @@ public class UserServiceImpl implements UserService {
     user.setJoinDate(LocalDate.now());
     return userRepository.save(user);
   }
+
+  @Override
+  public User findOneByEmail(String email) {
+    return userRepository.findOneByEmail(email);
+  }
+
 }

@@ -1,7 +1,8 @@
 package com.quantal.exchange.users.controllers;
 
 import com.quantal.exchange.users.facades.UserManagementFacade;
-
+import com.quantal.exchange.users.services.interfaces.UserService;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,6 +41,9 @@ public class UserControllerTests {
     private UserController userController;
 
     @MockBean
+    private UserService userService;
+
+    @MockBean
     private UserManagementFacade userManagementFacade;
 
 
@@ -71,4 +75,14 @@ public class UserControllerTests {
 
 
     }
+
+
+
+    @After
+    public void tearDown() {
+
+        userManagementFacade = null;
+    }
+
+
 }

@@ -5,6 +5,7 @@ import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,24 @@ public class UserManagementFacade extends AbstractBaseFacade {
     User userToCreate = toModel(userDto, User.class);
     User created  = userService.saveOrUpdate(userToCreate);
     UserDto createdDto = toDto(created, UserDto.class);
-    return toRESTResponse(createdDto);
+    return toRESTResponse(createdDto, "User created successfully", HttpStatus.CREATED);
+  }
+
+  public ResponseEntity<?>  update(UserDto userDto){
+
+    String message = "User not found";
+    if (userDto == null){
+      return toRESTResponse(userDto, message, HttpStatus.NOT_FOUND);
+    }
+    User userToUpdate = userService.findOneByEmail(userDto.getEmail());
+
+    if (userToUpdate == null){
+      return toRESTResponse(userDto, message, HttpStatus.NOT_FOUND);
+    }
+    User userToSave = toModel(userDto, userToUpdate, false);
+    User updated  = userService.saveOrUpdate(userToSave);
+    UserDto updatedDto = toDto(updated, UserDto.class);
+    return toRESTResponse(updatedDto, null);
   }
 
 
