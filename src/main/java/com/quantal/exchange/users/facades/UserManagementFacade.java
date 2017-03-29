@@ -53,7 +53,8 @@ public class UserManagementFacade extends AbstractBaseFacade {
     User userToSave = toModel(userUpdateDto, userToUpdate, false);
     User updated  = userService.saveOrUpdate(userToSave);
     UserDto updatedDto = toDto(updated, UserDto.class);
-    return toRESTResponse(updatedDto, "User updated");
+    return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
+    //return toRESTResponse(updatedDto, "User updated");
   }
 
 

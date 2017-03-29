@@ -1,11 +1,12 @@
 package com.quantal.exchange.users.facades;
 
-import com.quantal.exchange.users.dto.ResponseDTO;
+import com.quantal.exchange.users.dto.ResponseDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
+import com.quantal.exchange.users.util.TestUtil;
 import com.quantal.exchange.users.util.UserTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,8 +89,8 @@ public class UserManagementFacadesTest {
                 .willReturn(createdModel);
 
         ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
-        UserDto result = ((ResponseDTO<UserDto>)responseEntity.getBody()).getData();
-        String message = ((ResponseDTO<UserDto>)responseEntity.getBody()).getMessage();
+        UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
+        String message = ((ResponseDto<UserDto>)responseEntity.getBody()).getMessage();
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.CREATED);
@@ -156,8 +157,10 @@ public class UserManagementFacadesTest {
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat("User updated successfully").isEqualToIgnoringCase(message);
 
-        UserDto result = ((ResponseDTO<UserDto>)responseEntity.getBody()).getData();
+        UserDto result = TestUtil.getResponseDtoData(responseEntity);
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(id);
         assertThat(result.getFirstName()).isEqualTo(updateDtoFirstName);
@@ -225,7 +228,7 @@ public class UserManagementFacadesTest {
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
 
-        UserDto result = ((ResponseDTO<UserDto>)responseEntity.getBody()).getData();
+        UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(id);

@@ -6,4 +6,5 @@ package com.quantal.exchange.users.constants;
 public class MessageCodes {
 
     public static final String ENTITY_CREATED = "entity.created";
+    public static final String ENTITY_UPDATED = "entity.updated";
 }

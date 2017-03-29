@@ -1,7 +1,7 @@
 package com.quantal.exchange.users.facades;
 
 
-import com.quantal.exchange.users.dto.ResponseDTO;
+import com.quantal.exchange.users.dto.ResponseDto;
 import com.quantal.exchange.users.objectmapper.OrikaBeanMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,12 +32,12 @@ public abstract class AbstractBaseFacade {
    */
   public static <TResponseDTOData> ResponseEntity<?> toRESTResponse(TResponseDTOData reponseDTOData, String message, HttpStatus httpStatus, HttpHeaders httpHeaders){
 
-    ResponseEntity<ResponseDTO<TResponseDTOData>> response;
-    ResponseDTO<TResponseDTOData> responseDTO = new ResponseDTO<>(message,httpStatus.value(),reponseDTOData);
+    ResponseEntity<ResponseDto<TResponseDTOData>> response;
+    ResponseDto<TResponseDTOData> responseDto = new ResponseDto<>(message,httpStatus.value(),reponseDTOData);
     if (httpHeaders != null){
-      response = new ResponseEntity<>(responseDTO, httpHeaders, httpStatus);
+      response = new ResponseEntity<>(responseDto, httpHeaders, httpStatus);
     } else {
-      response = new ResponseEntity<>(responseDTO, httpStatus);
+      response = new ResponseEntity<>(responseDto, httpStatus);
     }
     return response;
   }

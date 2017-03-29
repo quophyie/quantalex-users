@@ -7,16 +7,16 @@ import lombok.Data;
  */
 
 @Data
-public class ResponseDTO<TData> extends ResponseMessageDTO {
+public class ResponseDto<TData> extends ResponseMessageDTO {
 
   private TData data;
 
-  public ResponseDTO(String message, int code, TData data){
+  public ResponseDto(String message, int code, TData data){
     super(message, code);
     this.data = data;
   }
 
-  public ResponseDTO(TData data) {
+  public ResponseDto(TData data) {
     this.data = data;
   }
 
