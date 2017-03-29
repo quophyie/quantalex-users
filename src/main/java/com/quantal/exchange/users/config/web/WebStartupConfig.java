@@ -15,18 +15,27 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.i18n.CookieLocaleResolver;
+import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
+import org.springframework.web.servlet.i18n.SessionLocaleResolver;
 import retrofit2.Retrofit;
 import retrofit2.adapter.java8.Java8CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.converter.scalars.ScalarsConverterFactory;
+
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -42,7 +51,7 @@ public class WebStartupConfig extends WebMvcConfigurerAdapter {
     String myExternalFilePath = "classpath:/static/";
 
     registry.addResourceHandler("**/*").addResourceLocations(myExternalFilePath);
-
+    //registry.addResourceHandler("/messages/**").addResourceLocations("/messages/");
     super.addResourceHandlers(registry);
   }
 
@@ -111,12 +120,32 @@ public class WebStartupConfig extends WebMvcConfigurerAdapter {
             .build();
   }
 
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    LocaleChangeInterceptor localeChangeInterceptor = new LocaleChangeInterceptor();
+    localeChangeInterceptor.setParamName("lang");
+    registry.addInterceptor(localeChangeInterceptor);
+  }
+
+  @Bean
+  public LocaleResolver localeResolver() {
+    CookieLocaleResolver localeResolver = new CookieLocaleResolver();
+    localeResolver.setDefaultLocale(Locale.UK); // Set default Locale as UK
+    // Uncomment the lines below if you want touse the Session Locale Resolver
+    // and return localeResolver
+    // SessionLocaleResolver localeResolver = new SessionLocaleResolver();
+    // localeResolver.setDefaultLocale(Locale.UK); // Set default Locale as UK
+    return localeResolver;
+  }
 
   @Bean
   public MessageSource messageSource() {
-    ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
-    messageSource.setBasename("/messages");
+    ReloadableResourceBundleMessageSource messageSource =
+            new ReloadableResourceBundleMessageSource();
+    messageSource.setBasename("classpath:messages/messages");
+    messageSource.setUseCodeAsDefaultMessage(true);
     messageSource.setDefaultEncoding("UTF-8");
+    messageSource.setCacheSeconds(0);
     return messageSource;
   }
 }

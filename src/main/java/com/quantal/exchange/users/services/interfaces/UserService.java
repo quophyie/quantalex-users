@@ -9,6 +9,7 @@ public interface UserService {
 
   User saveOrUpdate(User user);
   User findOneByEmail(String email);
+  User findOne(Long userid);
 
 
 

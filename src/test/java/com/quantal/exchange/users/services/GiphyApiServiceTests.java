@@ -8,6 +8,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.springframework.test.context.junit4.SpringRunner;
 import retrofit2.Retrofit;
 import retrofit2.adapter.java8.Java8CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -25,7 +26,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
  */
 
 
-@RunWith(MockitoJUnitRunner.class)
+//@RunWith(SpringRunner.class)
 public class GiphyApiServiceTests {
 
     @ClassRule

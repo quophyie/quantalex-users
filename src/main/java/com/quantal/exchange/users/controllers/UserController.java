@@ -26,7 +26,7 @@ public class UserController {
 
   @PostMapping(value="", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<?> createUser(@RequestBody UserDto userDto){
-    return userManagementFacade.saveOrUpdateUser(userDto);
+    return userManagementFacade.save(userDto);
   }
 
   @GetMapping(value="")
