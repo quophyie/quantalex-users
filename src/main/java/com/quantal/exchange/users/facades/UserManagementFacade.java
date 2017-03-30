@@ -2,6 +2,8 @@ package com.quantal.exchange.users.facades;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.UserDto;
+import com.quantal.exchange.users.exceptions.AlreadyExistsException;
+import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.MessageService;
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import javax.validation.constraints.Null;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -33,28 +36,31 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
   public ResponseEntity<?> save(UserDto userDto){
 
-    User userToCreate = toModel(userDto, User.class);
-    User created  = userService.saveOrUpdate(userToCreate);
-    UserDto createdDto = toDto(created, UserDto.class);
-    return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+    try {
+        User userToCreate = toModel(userDto, User.class);
+        User created = userService.createUser(userToCreate);
+        UserDto createdDto = toDto(created, UserDto.class);
+        return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+    } catch (AlreadyExistsException aee) {
+        return toRESTResponse(userDto, aee.getMessage(), HttpStatus.CONFLICT);
+    } catch (NullPointerException npe) {
+        return toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
+    }
   }
 
-  public ResponseEntity<?>  update(Long userId, UserDto userUpdateDto){
+  public ResponseEntity<?> updateUser(Long userId, UserDto userUpdateDto){
 
-    String message = "User not found";
-    if (userUpdateDto == null){
-      return toRESTResponse(userUpdateDto, "User not modified", HttpStatus.NOT_MODIFIED);
-    }
-    User userToUpdate = userService.findOne(userId);
-
-    if (userToUpdate == null){
-      return toRESTResponse(userUpdateDto, message, HttpStatus.NOT_FOUND);
-    }
-    User userToSave = toModel(userUpdateDto, userToUpdate, false);
-    User updated  = userService.saveOrUpdate(userToSave);
-    UserDto updatedDto = toDto(updated, UserDto.class);
-    return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
-    //return toRESTResponse(updatedDto, "User updated");
+      if (userUpdateDto == null) {
+          return toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
+      }
+      try {
+          User userUpdateModel = toModel(userUpdateDto, new User(), false);
+          User updated = userService.updateUser(userId, userUpdateModel);
+          UserDto updatedDto = toDto(updated, UserDto.class);
+          return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
+      } catch (NotFoundException npe) {
+          return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+      }
   }
 
 

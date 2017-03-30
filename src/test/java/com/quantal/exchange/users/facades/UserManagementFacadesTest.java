@@ -3,6 +3,8 @@ package com.quantal.exchange.users.facades;
 import com.quantal.exchange.users.dto.ResponseDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.exceptions.AlreadyExistsException;
+import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
@@ -85,7 +87,7 @@ public class UserManagementFacadesTest {
                 Gender.M, dob);
 
         given(this.userService
-                .saveOrUpdate(eq(userModelFromDto)))
+                .createUser(eq(userModelFromDto)))
                 .willReturn(createdModel);
 
         ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
@@ -105,9 +107,88 @@ public class UserManagementFacadesTest {
         assertThat(result.getDob()).isEqualTo(dob);
         assertThat(result.getGender()).isEqualTo(Gender.M);
 
-        verify(userService, times(1)).saveOrUpdate(userModelFromDto);
+        verify(userService, times(1)).createUser(userModelFromDto);
     }
 
+    @Test
+    public void shouldReturn409ConflictGivenAUserThatAlreadyExists() throws Exception {
+
+        String persistedModelFirstName =  "createdUserFirstName";
+        String persistedModelLastName = "createdUserLastName";
+        String persistedModelEmail = "createdUser@quant.com";
+        String persistedModelPassword = "createdUserPassword";
+        LocalDate dob = LocalDate.of(1990, 01, 01);
+
+        String errMsg = String.format("user with email %s already exists", persistedModelEmail);
+
+        User userModelFromDto = UserTestUtil.createUserModel(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+
+        UserDto createUserDto = UserTestUtil.createUserDto(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+        given(this.userService
+                .createUser(eq(userModelFromDto)))
+                .willThrow(new AlreadyExistsException(errMsg));
+
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        verify(userService, times(1)).createUser(eq(userModelFromDto));
+    }
+
+    @Test
+    public void shouldReturn400BadRequest() throws Exception {
+
+        String persistedModelFirstName =  "createdUserFirstName";
+        String persistedModelLastName = "createdUserLastName";
+        String persistedModelEmail = "createdUser@quant.com";
+        String persistedModelPassword = "createdUserPassword";
+        LocalDate dob = LocalDate.of(1990, 01, 01);
+
+        String errMsg = "data provided cannot be null";
+
+        User userModelFromDto =  UserTestUtil.createUserModel(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+
+        UserDto createUserDto = UserTestUtil.createUserDto(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+        given(this.userService
+                .createUser(eq(userModelFromDto)))
+                .willThrow(new NullPointerException(errMsg));
+
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        verify(userService, times(1)).createUser(eq(userModelFromDto));
+    }
 
     @Test
     public void shouldUpdateUserWithPartialData() throws Exception {
@@ -132,9 +213,8 @@ public class UserManagementFacadesTest {
                 updateDtoFirstName,
                 updateDtoLastName,
                 updateDtoEmail,
-                null,
-                null,
-                null);
+                persistedModelPassword,
+                Gender.M, null);
 
         UserDto updateDto = UserTestUtil.createUserDto(id,
                 updateDtoFirstName,
@@ -146,19 +226,15 @@ public class UserManagementFacadesTest {
 
 
         given(this.userService
-                .findOne(id))
-                .willReturn(persistedModel);
+                .updateUser(eq(id), eq(updateModel)))
+                .willReturn(updateModel);
 
-        given(this.userService
-                .saveOrUpdate(eq(updateModel)))
-                .willReturn(persistedModel);
-
-        ResponseEntity<?> responseEntity = userManagementFacade.update(id, updateDto);
+        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
-        assertThat("User updated successfully").isEqualToIgnoringCase(message);
+        assertThat("user updated successfully").isEqualToIgnoringCase(message);
 
         UserDto result = TestUtil.getResponseDtoData(responseEntity);
         assertThat(result).isNotNull();
@@ -168,8 +244,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getEmail()).isEqualTo(updateDtoEmail);
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
         assertThat(result.getGender()).isEqualTo(Gender.M);
-        verify(userService, times(1)).saveOrUpdate(updateModel);
-        verify(userService, times(1)).findOne(id);
+        verify(userService, times(1)).updateUser(eq(id), eq(updateModel));
     }
 
     @Test
@@ -220,10 +295,10 @@ public class UserManagementFacadesTest {
                 .willReturn(persistedModel);
 
         given(this.userService
-                .saveOrUpdate(eq(updateModel)))
-                .willReturn(persistedModel);
+                .updateUser(eq(id), eq(updateModel)))
+                .willReturn(updateModel);
 
-        ResponseEntity<?> responseEntity = userManagementFacade.update(id, updateDto);
+        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
@@ -237,29 +312,65 @@ public class UserManagementFacadesTest {
         assertThat(result.getEmail()).isEqualTo(updatedEmail);
         assertThat(result.getPassword()).isEqualTo(updatedUserPassword);
         assertThat(result.getGender()).isEqualTo(Gender.F);
-        verify(userService, times(1)).saveOrUpdate(updateModel);
-        verify(userService, times(1)).findOne(id);
+        verify(userService, times(1)).updateUser(eq(id), eq(updateModel));
     }
 
     @Test
-    public void should404NotFoundGivenNullUserDtoOnUserUpdate() throws Exception {
+    public void should400BadRequestGivenNullUserDtoOnUserUpdate() throws Exception {
 
-        String persistedModelFirstName = "persistedDtoFirstName";
+        UserDto userDto = null;
+
+        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(2L, userDto);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat("Data provided cannot be null").isEqualToIgnoringCase(message);
+
+    }
+
+    @Test
+    public void should404NotFoundIfSuppliedUserCannotBeFound() throws Exception {
+
+       String persistedModelFirstName = "persistedDtoFirstName";
         String persistedModelLastName = "persistedDtoLastName";
         String persistedModelEmail = "persistedModel@quant.com";
         String persistedModelPassword = "persistedDtoPassword";
         String updateDtoFirstName = "updatedFirstName";
         String updateDtoLastName = "updatedLastName";
         String updateDtoEmail = "updateModel@quant.com";
-        Long id = 1L;
+        Long id = 100L;
 
-        User persistedModel = UserTestUtil.createUserModel(id,
+        String errMsg = "user not found";
+
+        User userUpdateData = UserTestUtil.createUserModel(id,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
                 Gender.M, null);
+
+        given(this.userService
+                .updateUser(id, userUpdateData))
+                .willThrow(new NotFoundException(errMsg));
+
+        UserDto userDto = UserTestUtil.createUserDto(id,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, null);
+
+        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, userDto);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat("user not found").isEqualToIgnoringCase(message);
+        verify(userService, times(1)).updateUser(id, userUpdateData);
+
     }
+
 
 
 

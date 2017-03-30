@@ -7,13 +7,10 @@ import com.quantal.exchange.users.models.User;
  */
 public interface UserService {
 
+  User createUser(User user);
   User saveOrUpdate(User user);
   User findOneByEmail(String email);
   User findOne(Long userid);
-
-
-
-
-
-
+  void delete(Long userid);
+  User updateUser(Long userId, User updateData);
 }

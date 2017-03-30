@@ -74,8 +74,10 @@ public abstract class AbstractBaseFacade {
    * @return
    */
   public  <TDTO, TModel> TModel toModel(TDTO source, Class<TModel> clazz){
+    if (source == null || clazz == null)
+      return null;
     TModel model = mapper.map(source, clazz);
-      model = mapper.map(source, clazz);
+    model = mapper.map(source, clazz);
 
     return model;
   }
@@ -92,6 +94,9 @@ public abstract class AbstractBaseFacade {
    * @return
    */
   public  <TDTO, TModel> TModel toModel(TDTO source, TModel model, boolean mapNulls){
+
+    if (source == null || model == null)
+      return null;
 
 
     if (mapNulls){
@@ -112,7 +117,8 @@ public abstract class AbstractBaseFacade {
    */
 
   public  <TModel, TDTO> TDTO toDto(TModel source, Class<TDTO> clazz){
-
+    if (source == null || clazz == null)
+      return null;
     TDTO dto = mapper.map(source, clazz);
     return dto;
   }
@@ -126,7 +132,8 @@ public abstract class AbstractBaseFacade {
    */
 
   public  <TModel, TDTO> TDTO toDto(TModel source, TDTO dto){
-
+    if (source == null || dto == null)
+      return null;
     mapper.map(source, dto);
     return dto;
   }
