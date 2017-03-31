@@ -1,0 +1,45 @@
+{
+  "data" : {
+    "pairs" : [ {
+      "request" : {
+        "path" : "/api/v2/ability/",
+        "method" : "GET",
+        "destination" : "pokeapi.co",
+        "scheme" : "http",
+        "query" : "limit=20&offset=0",
+        "body" : "",
+        "headers" : {
+          "Accept-Encoding" : [ "gzip" ],
+          "Connection" : [ "Keep-Alive" ],
+          "User-Agent" : [ "okhttp/3.6.0" ]
+        },
+        "requestType" : "recording"
+      },
+      "response" : {
+        "status" : 200,
+        "body" : "H4sIAAAAAAAAA53Uy07EIBQG4Hdh4Wqw0+p4aWJ8EOuCwqk9ETgNl44zk3l3MS4sO2FVuugXoP/5L0xStIH13aHdscXBihQ9623Uescc+KhDen27sOg069kcwtIPzdAs9AliwVtJQ5OeQ7N2aTGixnAamnZo2I5ZYSB94wNYObPrrhBJ4B+iHJ7PGsqVu63iFwDFRyIfyqX7rTSKEDRw4Qy5cuqwpXyITp3KkYctooRZyonHLaHRjFBxmKct4oVVfAXU5Zt5zpwgAspypN1vlZV04GL05MYKKkvxUQRw9VYWZho1/g5a8VC0WZ6lpqi4RVsxGG2WZ0lmSU2gOJzAV9xVlmi0noxFUeFkoZakyXE5C/tRc8As3WhMtKmcKvaUBXzSws98QlezozziM4JWXMWaMuqynNPR8gDpD7Lre+pd+EqN/t+ufk1zj+Gl29/QNHn4WbHrN5ZhJ7QYBgAA",
+        "encodedBody" : true,
+        "headers" : {
+          "Allow" : [ "GET, HEAD, OPTIONS" ],
+          "Cf-Ray" : [ "3448d096f4e7348e-LHR" ],
+          "Connection" : [ "keep-alive" ],
+          "Content-Encoding" : [ "gzip" ],
+          "Content-Type" : [ "application/json" ],
+          "Date" : [ "Fri, 24 Mar 2017 10:05:55 GMT" ],
+          "Hoverfly" : [ "Was-Here" ],
+          "Server" : [ "cloudflare-nginx" ],
+          "Set-Cookie" : [ "__cfduid=da6a358956972ef39fcb8408945ecf5fd1490349955; expires=Sat, 24-Mar-18 10:05:55 GMT; path=/; domain=.pokeapi.co; HttpOnly" ],
+          "Vary" : [ "Accept-Encoding", "Cookie" ],
+          "X-Frame-Options" : [ "SAMEORIGIN" ],
+          "X-Xss-Protection" : [ "1; mode=block" ]
+        }
+      }
+    } ],
+    "globalActions" : {
+      "delays" : [ ]
+    }
+  },
+  "meta" : {
+    "schemaVersion" : "v1"
+  }
+}
