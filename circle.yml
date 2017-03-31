@@ -1,0 +1,8 @@
+machine:
+  services:
+    - postgresql
+
+database:
+  override:
+    - createuser -s -d postgres
+    - createdb quantal_exchange_users
