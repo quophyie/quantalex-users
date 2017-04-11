@@ -226,7 +226,7 @@ public class UserManagementFacadesTest {
 
 
         given(this.userService
-                .updateUser(eq(id), eq(updateModel)))
+                .updateUser(eq(updateModel)))
                 .willReturn(updateModel);
 
         ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
@@ -244,7 +244,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getEmail()).isEqualTo(updateDtoEmail);
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
         assertThat(result.getGender()).isEqualTo(Gender.M);
-        verify(userService, times(1)).updateUser(eq(id), eq(updateModel));
+        verify(userService, times(1)).updateUser(eq(updateModel));
     }
 
     @Test
@@ -295,7 +295,7 @@ public class UserManagementFacadesTest {
                 .willReturn(persistedModel);
 
         given(this.userService
-                .updateUser(eq(id), eq(updateModel)))
+                .updateUser(eq(updateModel)))
                 .willReturn(updateModel);
 
         ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
@@ -312,7 +312,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getEmail()).isEqualTo(updatedEmail);
         assertThat(result.getPassword()).isEqualTo(updatedUserPassword);
         assertThat(result.getGender()).isEqualTo(Gender.F);
-        verify(userService, times(1)).updateUser(eq(id), eq(updateModel));
+        verify(userService, times(1)).updateUser(eq(updateModel));
     }
 
     @Test
@@ -351,7 +351,7 @@ public class UserManagementFacadesTest {
                 Gender.M, null);
 
         given(this.userService
-                .updateUser(id, userUpdateData))
+                .updateUser(userUpdateData))
                 .willThrow(new NotFoundException(errMsg));
 
         UserDto userDto = UserTestUtil.createUserDto(id,
@@ -367,7 +367,7 @@ public class UserManagementFacadesTest {
         assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
         assertThat("user not found").isEqualToIgnoringCase(message);
-        verify(userService, times(1)).updateUser(id, userUpdateData);
+        verify(userService, times(1)).updateUser(userUpdateData);
 
     }
 

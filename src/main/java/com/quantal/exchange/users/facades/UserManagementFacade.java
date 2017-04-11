@@ -9,12 +9,10 @@ import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import javax.validation.constraints.Null;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -55,7 +53,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
       }
       try {
           User userUpdateModel = toModel(userUpdateDto, new User(), false);
-          User updated = userService.updateUser(userId, userUpdateModel);
+          User updated = userService.updateUser(userUpdateModel);
           UserDto updatedDto = toDto(updated, UserDto.class);
           return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
       } catch (NotFoundException npe) {

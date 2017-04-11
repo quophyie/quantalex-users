@@ -37,14 +37,14 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public User createUser(User user) {
-    if (ObjectUtils.allNotNull(user)){
+    if (!ObjectUtils.allNotNull(user)){
       throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
     }
 
     User existingUser = this.findOneByEmail(user.getEmail());
 
     if(existingUser != null ){
-      String msg = String.format("user with email %", user.getEmail());
+      String msg = String.format("user with email %s ", user.getEmail());
       throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
     }
 
@@ -74,17 +74,24 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
-  public User updateUser(Long userId, User updateData) {
-    if (ObjectUtils.allNotNull(updateData)){
-      throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
+  public User updateUser(User updateData) {
+    if (!ObjectUtils.allNotNull(updateData)){
+      String errMsg = String.format("Update object %s", messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
+      throw new NullPointerException(errMsg);
     }
+
+    Long userId = updateData.getId();
+    if (userId == null){
+      String errMsg = String.format("UserId of update object %s", messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
+      throw new NullPointerException(errMsg);
+    }
+
     User userToUpdate = this.findOne(userId);
 
     if (userToUpdate == null){
       throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
     }
 
-    updateData.setId(null);
     nullSkippingMapper.map(updateData, userToUpdate);
     return this.saveOrUpdate(userToUpdate);
   }
