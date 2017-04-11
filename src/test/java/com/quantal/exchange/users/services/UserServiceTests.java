@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
  */
 
 @RunWith(SpringRunner.class)
-public class UserviceTests {
+public class UserServiceTests {
 
     private UserService userService;
 
