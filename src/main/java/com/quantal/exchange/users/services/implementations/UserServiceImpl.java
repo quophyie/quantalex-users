@@ -23,7 +23,7 @@ public class UserServiceImpl implements UserService {
 
   private UserRepository userRepository;
   private MessageService messageService;
-  protected OrikaBeanMapper nullSkippingMapper;
+  private OrikaBeanMapper nullSkippingMapper;
 
   @Autowired
   public UserServiceImpl(UserRepository userRepository,
