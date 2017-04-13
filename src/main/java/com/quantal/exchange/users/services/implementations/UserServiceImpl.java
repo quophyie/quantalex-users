@@ -1,16 +1,15 @@
 package com.quantal.exchange.users.services.implementations;
 
+import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
-import com.quantal.exchange.users.objectmapper.OrikaBeanMapper;
 import com.quantal.exchange.users.repositories.UserRepository;
-import com.quantal.exchange.users.services.interfaces.MessageService;
+import com.quantal.basecomponents.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,12 +22,12 @@ public class UserServiceImpl implements UserService {
 
   private UserRepository userRepository;
   private MessageService messageService;
-  private OrikaBeanMapper nullSkippingMapper;
+  private NullSkippingOrikaBeanMapper nullSkippingMapper;
 
   @Autowired
   public UserServiceImpl(UserRepository userRepository,
                          MessageService messageService,
-                         @Qualifier("nullSkippingOrikaBeanMapper")OrikaBeanMapper nullSkippingMapper){
+                         NullSkippingOrikaBeanMapper nullSkippingMapper){
 
    this.userRepository = userRepository;
    this.messageService = messageService;

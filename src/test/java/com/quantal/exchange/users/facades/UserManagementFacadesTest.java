@@ -1,6 +1,8 @@
 package com.quantal.exchange.users.facades;
 
-import com.quantal.exchange.users.dto.ResponseDto;
+
+import com.quantal.basecomponents.dto.ResponseDto;
+import com.quantal.basecomponents.util.TestUtil;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
@@ -8,7 +10,6 @@ import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
-import com.quantal.exchange.users.util.TestUtil;
 import com.quantal.exchange.users.util.UserTestUtil;
 import org.junit.Before;
 import org.junit.Test;

@@ -1,12 +1,15 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.basecomponents.facades.AbstractBaseFacade;
+import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.basecomponents.objectmapper.OrikaBeanMapper;
+import com.quantal.basecomponents.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
-import com.quantal.exchange.users.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,7 +29,12 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final MessageService messageService;
 
   @Autowired
-  public UserManagementFacade(UserService userService, GiphyApiService giphyApiService, MessageService messageService) {
+  public UserManagementFacade(UserService userService,
+                              GiphyApiService giphyApiService,
+                              MessageService messageService,
+                              OrikaBeanMapper orikaBeanMapper,
+                              NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper) {
+    super(orikaBeanMapper, nullSkippingOrikaBeanMapper);
     this.userService = userService;
     this.giphyApiService = giphyApiService;
     this.messageService = messageService;

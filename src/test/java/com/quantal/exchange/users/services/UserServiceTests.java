@@ -1,14 +1,14 @@
 package com.quantal.exchange.users.services;
 
+import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.basecomponents.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
-import com.quantal.exchange.users.objectmapper.OrikaBeanMapper;
 import com.quantal.exchange.users.repositories.UserRepository;
 import com.quantal.exchange.users.services.implementations.UserServiceImpl;
-import com.quantal.exchange.users.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
 import org.junit.After;
@@ -43,7 +43,7 @@ public class UserServiceTests {
     private MessageService messageService;
 
     @MockBean
-    private OrikaBeanMapper orikaBeanMapper;
+    private NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper;
 
     private String persistedModelFirstName =  "createdUserFirstName";
     private String persistedModelLastName = "createdUserLastName";
@@ -58,7 +58,7 @@ public class UserServiceTests {
     @Before
     public void setUp(){
 
-        userService = new UserServiceImpl(userRepository, messageService, orikaBeanMapper);
+        userService = new UserServiceImpl(userRepository, messageService, nullSkippingOrikaBeanMapper);
     }
 
     @Test
@@ -240,7 +240,7 @@ public class UserServiceTests {
         // Given
         given(userRepository.findOne(userId)).willReturn(persistedUser);
         given(userRepository.save(updatedUser)).willReturn(updatedUser);
-        doNothing().when(orikaBeanMapper).map(updateData, persistedUser);
+        doNothing().when(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
 
         // When
         User result = userService.updateUser(updateData);
@@ -250,7 +250,7 @@ public class UserServiceTests {
 
         verify(userRepository).findOne(userId);
         verify(userRepository).save(updatedUser);
-        verify(orikaBeanMapper).map(updateData, persistedUser);
+        verify(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
 
 
     }
