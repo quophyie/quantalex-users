@@ -48,7 +48,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
         UserDto createdDto = toDto(created, UserDto.class);
         return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
     } catch (AlreadyExistsException aee) {
-        return toRESTResponse(userDto, aee.getMessage(), HttpStatus.CONFLICT);
+        return toRESTResponse(null, aee.getMessage(), HttpStatus.CONFLICT);
     } catch (NullPointerException npe) {
         return toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
     }

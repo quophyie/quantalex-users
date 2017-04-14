@@ -1,7 +1,9 @@
 package com.quantal.exchange.users.controllers;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.facades.UserManagementFacade;
+import com.quantal.exchange.users.jsonviews.UserViews;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ public class UserController {
     this.userManagementFacade = userManagementFacade;
   }
 
+  @JsonView(UserViews.CreatedUserView.class)
   @PostMapping(value="", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<?> createUser(@RequestBody UserDto userDto){
     return userManagementFacade.save(userDto);
