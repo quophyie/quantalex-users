@@ -1,8 +1,8 @@
 package com.quantal.exchange.users.facades;
 
 
-import com.quantal.basecomponents.dto.ResponseDto;
-import com.quantal.basecomponents.util.TestUtil;
+import com.quantal.shared.dto.ResponseDto;
+import com.quantal.shared.util.TestUtil;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;

@@ -1,6 +1,6 @@
 package com.quantal.exchange.users.jsonviews;
 
-import com.quantal.basecomponents.jsonviews.DefaultJsonView;
+import com.quantal.shared.jsonviews.DefaultJsonView;
 
 /**
  * Created by dman on 14/04/2017.

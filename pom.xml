@@ -32,12 +32,4 @@
 		</repository>
 	</repositories>
 
-	<dependencies>
-		<dependency>
-			<groupId>com.github.quophyie</groupId>
-			<artifactId>basecomponents</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
-	</dependencies>
-
 </project>

@@ -1,9 +1,9 @@
 package com.quantal.exchange.users.facades;
 
-import com.quantal.basecomponents.facades.AbstractBaseFacade;
-import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
-import com.quantal.basecomponents.objectmapper.OrikaBeanMapper;
-import com.quantal.basecomponents.services.interfaces.MessageService;
+import com.quantal.shared.facades.AbstractBaseFacade;
+import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.shared.objectmapper.OrikaBeanMapper;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;

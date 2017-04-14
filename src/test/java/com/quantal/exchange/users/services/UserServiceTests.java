@@ -1,7 +1,7 @@
 package com.quantal.exchange.users.services;
 
-import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
-import com.quantal.basecomponents.services.interfaces.MessageService;
+import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;

@@ -1,12 +1,12 @@
 package com.quantal.exchange.users.services.implementations;
 
-import com.quantal.basecomponents.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.repositories.UserRepository;
-import com.quantal.basecomponents.services.interfaces.MessageService;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,6 +90,7 @@ public class UserServiceImpl implements UserService {
     if (userToUpdate == null){
       throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
     }
+
 
     nullSkippingMapper.map(updateData, userToUpdate);
     return this.saveOrUpdate(userToUpdate);
