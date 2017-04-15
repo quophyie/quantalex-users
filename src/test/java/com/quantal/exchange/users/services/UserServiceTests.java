@@ -18,13 +18,17 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -256,6 +260,59 @@ public class UserServiceTests {
     }
 
     @Test
+    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongToTheUserToBeUpdated () {
+
+        String updateEmail = "user2@quant.com";
+
+
+        User updateData = UserTestUtil.createUserModel(userId,
+                null,
+                null,
+                updateEmail,
+                null,
+                null,
+                null);
+
+        User persistedUser = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+        String msgSvcMsg = "already exists";
+        String partialErrMsg = String.format("user with email %s ", updateData.getEmail());
+        String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
+
+        // Then
+        thrown.expect(AlreadyExistsException.class);
+        thrown.expectMessage(errMsg);
+        User updateModel2 = UserTestUtil.createUserModel(2L,
+                "userFName",
+                "userLName",
+                "user2@quant.com",
+                null,
+                null,
+                null);
+
+        List<User> users = Arrays.asList(persistedUser, updateModel2);
+        // Given
+        given(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg})).willReturn(errMsg);
+        given(userRepository.findAllByEmailIgnoreCase(updateData.getEmail())).willReturn(users);
+        given(userRepository.findOne(userId)).willReturn(persistedUser);
+
+
+        // When
+        userService.updateUser(updateData);
+
+        verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg});
+        verify(userRepository).countByEmailIgnoreCase(updateData.getEmail());
+        verify(userRepository).findOne(userId);
+
+
+    }
+
+    @Test
     public void shouldReturnOneUserGivenUserIdOnFindOne (){
 
         User user = UserTestUtil.createUserModel(userId,
@@ -313,9 +370,24 @@ public class UserServiceTests {
 
         // When
 
-        userService.delete(userId);
+        userService.deleteById(userId);
 
         // Then
+
+        verify(userRepository).delete(userId);
+    }
+
+    @Test
+    public void shouldThrowNotFoundExceptionGivenNonExistentUserIdOnDeletUserById () {
+
+
+        doThrow(new EmptyResultDataAccessException(0)).when(userRepository).delete(userId);
+
+        // Then
+        thrown.expect(NotFoundException.class);
+
+        // When
+        userService.deleteById(userId);
 
         verify(userRepository).delete(userId);
     }

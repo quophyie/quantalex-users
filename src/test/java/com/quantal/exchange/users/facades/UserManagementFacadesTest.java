@@ -1,18 +1,21 @@
 package com.quantal.exchange.users.facades;
 
 
+import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.shared.dto.ResponseDto;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.shared.util.TestUtil;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
-import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +31,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 /**
  * Created by dman on 25/03/2017.
@@ -40,10 +42,23 @@ import static org.mockito.Mockito.verify;
 @AutoConfigureMockMvc
 public class UserManagementFacadesTest {
 
-    @MockBean
-    private GiphyApiService giphyApiService;
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private String persistedModelFirstName =  "createdUserFirstName";
+    private String persistedModelLastName = "createdUserLastName";
+    private String persistedModelEmail = "createdUser@quant.com";
+    private String persistedModelPassword = "createdUserPassword";
+    private LocalDate persistedModelDob = LocalDate.of(1990, 01, 01);
+    private Gender persistedModelGender = Gender.M;
+    private Long userId = 1L;
+
     @MockBean
     private UserService userService;
+
+    @MockBean
+    private MessageService messageService;
 
 
     @Autowired
@@ -58,26 +73,29 @@ public class UserManagementFacadesTest {
     @Test
     public void shouldCreateNewUser() throws Exception {
 
-        String persistedModelFirstName =  "createdUserFirstName";
-        String persistedModelLastName = "createdUserLastName";
-        String persistedModelEmail = "createdUser@quant.com";
-        String persistedModelPassword = "createdUserPassword";
-        LocalDate dob = LocalDate.of(1990, 01, 01);
-        Long id = 1L;
+        persistedModelFirstName =  "createdUserFirstName";
+        persistedModelLastName = "createdUserLastName";
+        persistedModelEmail = "createdUser@quant.com";
+        persistedModelPassword = "createdUserPassword";
+        persistedModelDob = LocalDate.of(1990, 01, 01);
+        userId = 1L;
 
-        User createdModel = UserTestUtil.createUserModel(id,
+        String successMsg = "User created successfully";
+        String[] replacements = new String[]{User.class.getSimpleName()};
+
+        User createdModel = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                Gender.M, persistedModelDob);
 
         User userModelFromDto = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                Gender.M, persistedModelDob);
 
 
         UserDto createUserDto = UserTestUtil.createUserDto(null,
@@ -85,11 +103,14 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                Gender.M, persistedModelDob);
 
         given(this.userService
                 .createUser(eq(userModelFromDto)))
                 .willReturn(createdModel);
+
+        given(this.messageService.getMessage(MessageCodes.ENTITY_CREATED, replacements))
+                .willReturn(successMsg);
 
         ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
         UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
@@ -97,18 +118,19 @@ public class UserManagementFacadesTest {
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.CREATED);
-        assertThat("User created successfully").isEqualToIgnoringCase(message);
+        assertThat(successMsg).isEqualToIgnoringCase(message);
 
         assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(id);
+        assertThat(result.getId()).isEqualTo(userId);
         assertThat(result.getFirstName()).isEqualTo(persistedModelFirstName);
         assertThat(result.getLastName()).isEqualTo(persistedModelLastName);
         assertThat(result.getEmail()).isEqualTo(persistedModelEmail);
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
-        assertThat(result.getDob()).isEqualTo(dob);
+        assertThat(result.getDob()).isEqualTo(persistedModelDob);
         assertThat(result.getGender()).isEqualTo(Gender.M);
 
         verify(userService, times(1)).createUser(userModelFromDto);
+        verify(this.messageService).getMessage(MessageCodes.ENTITY_CREATED, replacements);
     }
 
     @Test
@@ -161,6 +183,7 @@ public class UserManagementFacadesTest {
         LocalDate dob = LocalDate.of(1990, 01, 01);
 
         String errMsg = "data provided cannot be null";
+        String[] replacements = new String[]{User.class.getSimpleName()};
 
         User userModelFromDto =  UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
@@ -177,6 +200,10 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, dob);
 
+        given(this.messageService
+                .getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements))
+                .willReturn(errMsg);
+
         given(this.userService
                 .createUser(eq(userModelFromDto)))
                 .willThrow(new NullPointerException(errMsg));
@@ -188,7 +215,56 @@ public class UserManagementFacadesTest {
         assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(errMsg).isEqualToIgnoringCase(message);
 
+        verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
         verify(userService, times(1)).createUser(eq(userModelFromDto));
+    }
+
+    @Test
+    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongingToTheUserToBeUpdated () {
+
+        String updatedUserFirstName = "UpdatedUserFirstName";
+        String updatedUserLastName = "UpdatedUserLastName";
+
+
+        UserDto updateData = UserTestUtil.createUserDto(userId,
+                null,
+                null,
+                persistedModelEmail,
+                null,
+                null,
+                null);
+
+        User updateModel = UserTestUtil.createUserModel(userId,
+                null,
+                null,
+                persistedModelEmail,
+                null,
+                null,
+                null);
+
+        String msgSvcMsg = "already exists";
+        String partialErrMsg = String.format("user with email %s ", updateData.getEmail());
+        String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
+
+        // Given
+        given(this.userService
+                .updateUser(eq(updateModel)))
+                .willThrow(new AlreadyExistsException(errMsg));
+
+        // When
+        ResponseEntity<?> responseEntity =   userManagementFacade.updateUser(userId, updateData);;
+
+        // Then
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        UserDto result = TestUtil.getResponseDtoData(responseEntity);
+        assertThat(result).isNull();
+        verify(userService).updateUser(eq(updateModel));
+
+
     }
 
     @Test
@@ -225,6 +301,12 @@ public class UserManagementFacadesTest {
                 null,
                 null);
 
+        String[] replacements = new String[]{User.class.getSimpleName()};
+        String successMsg = "User updated successfully";
+
+        given(this.messageService
+                .getMessage(MessageCodes.ENTITY_UPDATED, replacements))
+                .willReturn(successMsg);
 
         given(this.userService
                 .updateUser(eq(updateModel)))
@@ -235,7 +317,7 @@ public class UserManagementFacadesTest {
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
-        assertThat("user updated successfully").isEqualToIgnoringCase(message);
+        assertThat(successMsg).isEqualToIgnoringCase(message);
 
         UserDto result = TestUtil.getResponseDtoData(responseEntity);
         assertThat(result).isNotNull();
@@ -246,6 +328,8 @@ public class UserManagementFacadesTest {
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
         assertThat(result.getGender()).isEqualTo(Gender.M);
         verify(userService, times(1)).updateUser(eq(updateModel));
+        verify(messageService).getMessage(MessageCodes.ENTITY_UPDATED, replacements);
+
     }
 
     @Test
@@ -317,16 +401,132 @@ public class UserManagementFacadesTest {
     }
 
     @Test
+    public void shouldReturnUserGivenUserId() {
+
+        User persistedModel = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M,
+                persistedModelDob);
+
+
+        given(this.userService
+                .findOne(userId))
+                .willReturn(persistedModel);
+
+        given(this.messageService
+                .getMessage(MessageCodes.SUCCESS))
+                .willReturn("OK");
+
+
+        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(userId);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
+
+        UserDto result = TestUtil.getResponseDtoData(responseEntity);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(userId);
+        assertThat(result.getFirstName()).isEqualTo(persistedModelFirstName);
+        assertThat(result.getLastName()).isEqualTo(persistedModelLastName);
+        assertThat(result.getEmail()).isEqualTo(persistedModelEmail);
+        assertThat(result.getDob()).isEqualTo(persistedModelDob);
+        assertThat(result.getGender()).isEqualTo(persistedModelGender);
+        verify(userService, times(1)).findOne(userId);
+    }
+
+    @Test
+    public void should404NotFoundGiveninvalidUserId() throws Exception {
+        String errMsg = "User not found";
+
+        given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()})).willReturn(errMsg);
+
+        given(this.userService
+                .findOne(userId))
+                .willReturn(null);
+
+        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(2L);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        verify(userService).findOne(2L);
+        verify(messageService).getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()});
+
+    }
+
+    @Test
+    public void shouldDeleteUserGivenUserId() throws Exception {
+        String successMsg = "OK";
+        User persistedModel = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M,
+                persistedModelDob);
+
+        given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(successMsg);
+
+        doNothing().when(userService)
+                .deleteById(userId);
+
+        ResponseEntity<?> responseEntity = userManagementFacade.deleteByUserId(userId);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(successMsg).isEqualToIgnoringCase(message);
+
+        verify(userService).deleteById(userId);
+        verify(messageService).getMessage(MessageCodes.SUCCESS);
+
+    }
+
+
+    @Test
+    public void should404NotFoundGiveninvalidUserIdOnDelete() throws Exception {
+        String errMsg = "User not found";
+
+        Long userToDelId = 2L;
+        given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()})).willReturn(errMsg);
+
+        doThrow(NotFoundException.class)
+                .when(this.userService)
+                .deleteById(userToDelId);
+
+        ResponseEntity<?> responseEntity = userManagementFacade.deleteByUserId(userToDelId);
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        verify(userService).deleteById(userToDelId);
+        verify(messageService).getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()});
+
+    }
+
+    @Test
     public void should400BadRequestGivenNullUserDtoOnUserUpdate() throws Exception {
 
+        String errMsg = "Data provided cannot be null";
         UserDto userDto = null;
-
+        String[] replacements = new String[]{User.class.getSimpleName()};
+        given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements )).willReturn(errMsg);
         ResponseEntity<?> responseEntity = userManagementFacade.updateUser(2L, userDto);
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
-        assertThat("Data provided cannot be null").isEqualToIgnoringCase(message);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+
+        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements );
 
     }
 
@@ -337,12 +537,11 @@ public class UserManagementFacadesTest {
         String persistedModelLastName = "persistedDtoLastName";
         String persistedModelEmail = "persistedModel@quant.com";
         String persistedModelPassword = "persistedDtoPassword";
-        String updateDtoFirstName = "updatedFirstName";
-        String updateDtoLastName = "updatedLastName";
-        String updateDtoEmail = "updateModel@quant.com";
+
         Long id = 100L;
 
         String errMsg = "user not found";
+        String[] replacements = new String[]{User.class.getSimpleName()};
 
         User userUpdateData = UserTestUtil.createUserModel(id,
                 persistedModelFirstName,
@@ -355,6 +554,7 @@ public class UserManagementFacadesTest {
                 .updateUser(userUpdateData))
                 .willThrow(new NotFoundException(errMsg));
 
+        given(messageService.getMessage(MessageCodes.NOT_FOUND,replacements )).willReturn(errMsg);
         UserDto userDto = UserTestUtil.createUserDto(id,
                 persistedModelFirstName,
                 persistedModelLastName,

@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
  */
 
 @RestController
-@RequestMapping("/users/")
+@RequestMapping("/users")
 public class UserController {
 
   private UserManagementFacade userManagementFacade;
@@ -27,12 +27,28 @@ public class UserController {
   }
 
   @JsonView(UserViews.CreatedUserView.class)
-  @PostMapping(value="", consumes = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<?> createUser(@RequestBody UserDto userDto){
     return userManagementFacade.save(userDto);
   }
 
-  @GetMapping(value="")
+  @JsonView(UserViews.CreatedUserView.class)
+  @PutMapping(value="/{userId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<?> updateeUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
+    return userManagementFacade.updateUser(userId, userDto);
+  }
+
+  @GetMapping(value="/{userId}")
+  public ResponseEntity<?> findUserbyId(@PathVariable Long userId){
+    return userManagementFacade.findUserById(userId);
+  }
+
+  @DeleteMapping(value="/{userId}")
+  public ResponseEntity<?> deleteUserbyId(@PathVariable Long userId){
+    return userManagementFacade.deleteByUserId(userId);
+  }
+
+  @GetMapping(value="/")
   public CompletableFuture<String> getFunnyCatAsync(){
     return userManagementFacade.getFunnyCat();
   }

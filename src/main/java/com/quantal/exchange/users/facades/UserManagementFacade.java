@@ -61,14 +61,36 @@ public class UserManagementFacade extends AbstractBaseFacade {
       }
       try {
           User userUpdateModel = toModel(userUpdateDto, new User(), false);
+          userUpdateModel.setId(userId);
           User updated = userService.updateUser(userUpdateModel);
           UserDto updatedDto = toDto(updated, UserDto.class);
           return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
       } catch (NotFoundException npe) {
           return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
       }
+      catch (AlreadyExistsException aee) {
+          return toRESTResponse(null, aee.getMessage(), HttpStatus.CONFLICT);
+      }
   }
 
+    public ResponseEntity<?> findUserById(Long userId){
+        User user = userService.findOne(userId);
+        UserDto userDto = toModel(user, UserDto.class);
+        if (user == null) {
+            return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+        }
+
+        return toRESTResponse(userDto, messageService.getMessage(MessageCodes.SUCCESS));
+    }
+
+    public ResponseEntity<?> deleteByUserId(Long userId) {
+        try {
+            userService.deleteById(userId);
+            return toRESTResponse(null, messageService.getMessage(MessageCodes.SUCCESS));
+        } catch (NotFoundException nfe){
+            return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+        }
+    }
 
   public CompletableFuture<String> getFunnyCat(){
     //String result = "";

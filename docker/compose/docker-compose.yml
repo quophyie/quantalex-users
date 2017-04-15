@@ -3,7 +3,7 @@ postgres_quantal_users:
   restart: always
   image: sameersbn/postgresql:9.6-2
   ports:
-    - "5432:5432"
+    - "5433:5432"
   environment:
     - DEBUG=false
 
