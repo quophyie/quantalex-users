@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.quantal.exhange</groupId>
-	<artifactId>users</artifactId>
+	<artifactId>quantalex-users</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>quantal-users</name>
+	<name>quantalex-users</name>
 	<description>Quantal LHS Exchange Microservice</description>
 
 	<parent>

@@ -148,7 +148,7 @@ public class UserControllerTests {
     }
 
     @Test
-    public void shouldGetAUserGivenTheUserId() throws Exception {
+    public void shouldFindAUserGivenTheUserId() throws Exception {
 
         UserDto userDto = UserTestUtil.createUserDto(userId,
                 persistedUserFirstName,
