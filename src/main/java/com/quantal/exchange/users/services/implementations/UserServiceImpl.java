@@ -6,6 +6,8 @@ import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.repositories.UserRepository;
+import com.quantal.shared.objectmapper.OrikaBeanMapper;
+import com.quantal.shared.services.implementations.AbstractRepositoryService;
 import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import org.apache.commons.lang3.ObjectUtils;
@@ -21,20 +23,24 @@ import java.util.List;
  * Created by dman on 08/03/2017.
  */
 @Service
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl extends AbstractRepositoryService<User, Long> implements UserService {
 
   private UserRepository userRepository;
   private MessageService messageService;
   private NullSkippingOrikaBeanMapper nullSkippingMapper;
+  //private OrikaBeanMapper orikaBeanMapper;
 
   @Autowired
   public UserServiceImpl(UserRepository userRepository,
                          MessageService messageService,
+                         OrikaBeanMapper orikaBeanMapper,
                          NullSkippingOrikaBeanMapper nullSkippingMapper){
+    super(userRepository, orikaBeanMapper, nullSkippingMapper);
 
    this.userRepository = userRepository;
    this.messageService = messageService;
    this.nullSkippingMapper = nullSkippingMapper;
+   //this.orikaBeanMapper = orikaBeanMapper;
   }
 
   @Override

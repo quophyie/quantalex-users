@@ -1,6 +1,7 @@
 package com.quantal.exchange.users.services;
 
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.shared.objectmapper.OrikaBeanMapper;
 import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.enums.Gender;
@@ -17,6 +18,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -46,8 +48,11 @@ public class UserServiceTests {
     @MockBean
     private MessageService messageService;
 
-    @MockBean
+    @Mock
     private NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper;
+
+    @Mock
+    private OrikaBeanMapper orikaBeanMapper;
 
     private String persistedModelFirstName =  "createdUserFirstName";
     private String persistedModelLastName = "createdUserLastName";
@@ -62,7 +67,7 @@ public class UserServiceTests {
     @Before
     public void setUp(){
 
-        userService = new UserServiceImpl(userRepository, messageService, nullSkippingOrikaBeanMapper);
+        userService = new UserServiceImpl(userRepository, messageService, orikaBeanMapper, nullSkippingOrikaBeanMapper);
     }
 
     @Test
