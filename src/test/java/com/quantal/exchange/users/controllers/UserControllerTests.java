@@ -214,6 +214,64 @@ public class UserControllerTests {
                                 .isEqualTo("OK"));
     }
 
+    @Test
+    public void shouldCreateANewUserGivenUserData() throws Exception {
+
+        UserDto userDto = UserTestUtil.createUserDto(null,
+                persistedUserFirstName,
+                persistedUserLasttName,
+                persistedUserEmail,
+                persistedUserPassword,
+                persistedUserGender,
+                null);
+
+        UserDto createdUserDto = UserTestUtil.createUserDto(userId,
+                persistedUserFirstName,
+                persistedUserLasttName,
+                persistedUserEmail,
+                persistedUserPassword,
+                persistedUserGender,
+                null);
+
+        ResponseEntity response = new ResponseEntity(createdUserDto, HttpStatus.OK);
+
+        given(this.userManagementFacade.save(userDto))
+                .willReturn(response);
+
+
+        String body = TestUtil.convertObjectToJsonString(userDto);
+        this.mvc.perform(
+                  post("/users/")
+                  .contentType(MediaType.APPLICATION_JSON_VALUE)
+                  .content(TestUtil.convertObjectToJsonString(userDto))
+                )
+
+                .andExpect(status().isOk())
+                .andExpect(
+                        json()
+                                .isObject())
+                .andExpect(
+                        json()
+                                .node("id")
+                                .isEqualTo(userId))
+                .andExpect(
+                        json()
+                                .node("firstName")
+                                .isEqualTo(persistedUserFirstName))
+                .andExpect(
+                        json()
+                                .node("lastName")
+                                .isEqualTo(persistedUserLasttName))
+                .andExpect(
+                        json()
+                                .node("email")
+                                .isEqualTo(persistedUserEmail))
+                .andExpect(
+                        json()
+                                .node("gender")
+                                .isEqualTo(persistedUserGender));
+    }
+
 
     @After
     public void tearDown() {
