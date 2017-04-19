@@ -3,6 +3,8 @@ FROM maven:3.5.0-jdk-8
 # RUN mkdir /opt/app
 
 ADD target/quantalex-users-0.0.1-SNAPSHOT.jar ~/
+ADD docker/wait-for-it.sh /wait-for-it.sh
+RUN chmod 777 /wait-for-it.sh
 CMD ["java", "-jar", "~/quantalex-users-0.0.1-SNAPSHOT.jar"]
 # CMD ["echo", "$DB_HOST"]
 # EXPOSE 8080

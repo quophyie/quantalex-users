@@ -238,8 +238,6 @@ public class UserControllerTests {
         given(this.userManagementFacade.save(userDto))
                 .willReturn(response);
 
-
-        String body = TestUtil.convertObjectToJsonString(userDto);
         this.mvc.perform(
                   post("/users/")
                   .contentType(MediaType.APPLICATION_JSON_VALUE)
