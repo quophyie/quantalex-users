@@ -27,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDate;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -98,21 +99,27 @@ public class UserManagementFacadesTest {
                 Gender.M, persistedModelDob);
 
 
-        UserDto createUserDto = UserTestUtil.createUserDto(null,
+        UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
                 Gender.M, persistedModelDob);
 
+        CompletableFuture userServiceCompletableFuture = new CompletableFuture();
+        userServiceCompletableFuture.complete(createdModel);
         given(this.userService
                 .createUser(eq(userModelFromDto)))
-                .willReturn(createdModel);
+                .willReturn(userServiceCompletableFuture);
 
         given(this.messageService.getMessage(MessageCodes.ENTITY_CREATED, replacements))
                 .willReturn(successMsg);
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
+        CompletableFuture completableFuture = new CompletableFuture();
+        ResponseEntity<?> completableFutureResponseEntity = new ResponseEntity<Object>(createdModel, HttpStatus.CREATED);
+        completableFuture.complete(completableFutureResponseEntity);
+
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
         UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
         String message = ((ResponseDto<UserDto>)responseEntity.getBody()).getMessage();
 
@@ -152,7 +159,7 @@ public class UserManagementFacadesTest {
                 Gender.M, dob);
 
 
-        UserDto createUserDto = UserTestUtil.createUserDto(null,
+        UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
@@ -161,16 +168,23 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .createUser(eq(userModelFromDto)))
-                .willThrow(new AlreadyExistsException(errMsg));
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
+                    future.completeExceptionally(new AlreadyExistsException(errMsg));
+                    return future;
+                });
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
-        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        //ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        userManagementFacade.save(createUserDto).thenAccept(responseEntity -> {
+            String message = TestUtil.getResponseDtoMessage(responseEntity);
 
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-        assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(errMsg).isEqualToIgnoringCase(message);
+            HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+            assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(errMsg).isEqualToIgnoringCase(message);
 
-        verify(userService, times(1)).createUser(eq(userModelFromDto));
+            verify(userService, times(1)).createUser(eq(userModelFromDto));
+        });
+
     }
 
     @Test
@@ -193,7 +207,7 @@ public class UserManagementFacadesTest {
                 Gender.M, dob);
 
 
-        UserDto createUserDto = UserTestUtil.createUserDto(null,
+        UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
@@ -206,17 +220,26 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .createUser(eq(userModelFromDto)))
-                .willThrow(new NullPointerException(errMsg));
+                .willAnswer(invocationOnMock ->  {
+                    CompletableFuture future  = new CompletableFuture();
+                    future.completeExceptionally(new NullPointerException(errMsg));
+                    return future;
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto);
-        String message = TestUtil.getResponseDtoMessage(responseEntity);
+                });
 
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(errMsg).isEqualToIgnoringCase(message);
+       // ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
 
-        verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
-        verify(userService, times(1)).createUser(eq(userModelFromDto));
+        userManagementFacade.save(createUserDto).thenAccept( responseEntity -> {
+            String message = TestUtil.getResponseDtoMessage(responseEntity);
+
+            HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+            assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(errMsg).isEqualToIgnoringCase(message);
+
+            verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
+            verify(userService, times(1)).createUser(eq(userModelFromDto));
+        });
+
     }
 
     @Test
@@ -226,7 +249,7 @@ public class UserManagementFacadesTest {
         String updatedUserLastName = "UpdatedUserLastName";
 
 
-        UserDto updateData = UserTestUtil.createUserDto(userId,
+        UserDto updateData = UserTestUtil.createApiGatewayUserDto(userId,
                 null,
                 null,
                 persistedModelEmail,
@@ -293,7 +316,7 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, null);
 
-        UserDto updateDto = UserTestUtil.createUserDto(id,
+        UserDto updateDto = UserTestUtil.createApiGatewayUserDto(id,
                 updateDtoFirstName,
                 updateDtoLastName,
                 updateDtoEmail,
@@ -366,7 +389,7 @@ public class UserManagementFacadesTest {
                 Gender.F,
                 updatedDob);
 
-        UserDto updateDto = UserTestUtil.createUserDto(id,
+        UserDto updateDto = UserTestUtil.createApiGatewayUserDto(id,
                 updatedUserFirstName,
                 updatedUserLastName,
                 updatedEmail,
@@ -555,7 +578,7 @@ public class UserManagementFacadesTest {
                 .willThrow(new NotFoundException(errMsg));
 
         given(messageService.getMessage(MessageCodes.NOT_FOUND,replacements )).willReturn(errMsg);
-        UserDto userDto = UserTestUtil.createUserDto(id,
+        UserDto userDto = UserTestUtil.createApiGatewayUserDto(id,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,

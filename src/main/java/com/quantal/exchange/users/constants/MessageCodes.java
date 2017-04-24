@@ -11,4 +11,5 @@ public class MessageCodes {
     public static final String NOT_FOUND = "not.found";
     public static final String ENTITY_ALREADY_EXISTS = "entity.exists";
     public static final String SUCCESS = "ok";
+    public  static final String INTERNAL_SERVER_ERROR = "internal.server.error";
 }

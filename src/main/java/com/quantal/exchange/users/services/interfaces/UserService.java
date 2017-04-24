@@ -4,13 +4,14 @@ import com.quantal.exchange.users.models.User;
 import com.quantal.shared.services.interfaces.RepositoryService;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by dman on 08/03/2017.
  */
 public interface UserService extends RepositoryService<User, Long> {
 
-  User createUser(User user);
+  CompletableFuture<User> createUser(User user);
   User saveOrUpdate(User user);
   User findOneByEmail(String email);
   //User findOne(Long userid);

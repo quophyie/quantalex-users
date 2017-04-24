@@ -97,7 +97,7 @@ public class UserControllerTests {
         String updatedUserFirstName = "updatedUserFirstName";
         String updatedUserLastName = "updatedUserLastName";
         Long userId = 1L;
-        UserDto updateData = UserTestUtil.createUserDto(userId,
+        UserDto updateData = UserTestUtil.createApiGatewayUserDto(userId,
                 updatedUserFirstName,
                 updatedUserLastName,
                 null,
@@ -105,7 +105,7 @@ public class UserControllerTests {
                 null,
                 null);
 
-        UserDto updatedUser = UserTestUtil.createUserDto(userId,
+        UserDto updatedUser = UserTestUtil.createApiGatewayUserDto(userId,
                 updatedUserFirstName,
                 updatedUserLastName,
                 persistedUserEmail,
@@ -149,7 +149,7 @@ public class UserControllerTests {
     @Test
     public void shouldFindAUserGivenTheUserId() throws Exception {
 
-        UserDto userDto = UserTestUtil.createUserDto(userId,
+        UserDto userDto = UserTestUtil.createApiGatewayUserDto(userId,
                 persistedUserFirstName,
                 persistedUserLasttName,
                 persistedUserEmail,
@@ -217,7 +217,7 @@ public class UserControllerTests {
     @Test
     public void shouldCreateANewUserGivenUserData() throws Exception {
 
-        UserDto userDto = UserTestUtil.createUserDto(null,
+        UserDto userDto = UserTestUtil.createApiGatewayUserDto(null,
                 persistedUserFirstName,
                 persistedUserLasttName,
                 persistedUserEmail,
@@ -225,7 +225,7 @@ public class UserControllerTests {
                 persistedUserGender,
                 null);
 
-        UserDto createdUserDto = UserTestUtil.createUserDto(userId,
+        UserDto createdUserDto = UserTestUtil.createApiGatewayUserDto(userId,
                 persistedUserFirstName,
                 persistedUserLasttName,
                 persistedUserEmail,
@@ -234,15 +234,22 @@ public class UserControllerTests {
                 null);
 
         ResponseEntity response = new ResponseEntity(createdUserDto, HttpStatus.OK);
-
+        CompletableFuture completableFuture = new CompletableFuture();
+        completableFuture.complete(response);
         given(this.userManagementFacade.save(userDto))
-                .willReturn(response);
+                .willReturn(completableFuture);
 
-        this.mvc.perform(
+        MvcResult asyscResult = this.mvc.perform(post("/users/")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(TestUtil.convertObjectToJsonString(userDto)))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyscResult))
+        /*this.mvc.perform(
                   post("/users/")
                   .contentType(MediaType.APPLICATION_JSON_VALUE)
                   .content(TestUtil.convertObjectToJsonString(userDto))
-                )
+                )*/
 
                 .andExpect(status().isOk())
                 .andExpect(

@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.shared.dto.ResponseDto;
 import com.quantal.shared.facades.AbstractBaseFacade;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.shared.objectmapper.OrikaBeanMapper;
@@ -40,18 +41,23 @@ public class UserManagementFacade extends AbstractBaseFacade {
     this.messageService = messageService;
   }
 
-  public ResponseEntity<?> save(UserDto userDto){
-
-    try {
+  public CompletableFuture<? extends ResponseEntity> save(UserDto userDto){
         User userToCreate = toModel(userDto, User.class);
-        User created = userService.createUser(userToCreate);
-        UserDto createdDto = toDto(created, UserDto.class);
-        return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
-    } catch (AlreadyExistsException aee) {
-        return toRESTResponse(null, aee.getMessage(), HttpStatus.CONFLICT);
-    } catch (NullPointerException npe) {
-        return toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
-    }
+        return userService.createUser(userToCreate)
+                .thenApply(created -> {
+                    UserDto createdDto = toDto(created, UserDto.class);
+                    return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                })
+                .exceptionally( ex -> {
+                    ResponseEntity responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR, new String[]{User.class.getSimpleName()}), HttpStatus.INTERNAL_SERVER_ERROR);
+                   if (ex.getCause() instanceof AlreadyExistsException){
+                       responseEntity =  toRESTResponse(null, ex.getCause().getMessage(), HttpStatus.CONFLICT);
+                    } else if (ex.getCause() instanceof NullPointerException){
+                       responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
+                    }
+                    return responseEntity;
+                });
+
   }
 
   public ResponseEntity<?> updateUser(Long userId, UserDto userUpdateDto){

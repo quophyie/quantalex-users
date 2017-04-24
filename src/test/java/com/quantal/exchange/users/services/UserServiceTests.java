@@ -1,5 +1,8 @@
 package com.quantal.exchange.users.services;
 
+import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
+import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
+import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.shared.objectmapper.OrikaBeanMapper;
 import com.quantal.shared.services.interfaces.MessageService;
@@ -19,6 +22,8 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -26,6 +31,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -42,7 +49,7 @@ public class UserServiceTests {
 
     private UserService userService;
 
-    @MockBean
+    @Mock
     private UserRepository userRepository;
 
     @MockBean
@@ -50,6 +57,9 @@ public class UserServiceTests {
 
     @Mock
     private NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper;
+
+    @Mock
+    private ApiGatewayService apiGatewayService;
 
     @Mock
     private OrikaBeanMapper orikaBeanMapper;
@@ -67,7 +77,11 @@ public class UserServiceTests {
     @Before
     public void setUp(){
 
-        userService = new UserServiceImpl(userRepository, messageService, orikaBeanMapper, nullSkippingOrikaBeanMapper);
+        userService = new UserServiceImpl(userRepository,
+                messageService,
+                orikaBeanMapper,
+                nullSkippingOrikaBeanMapper,
+                apiGatewayService);
     }
 
     @Test
@@ -89,7 +103,7 @@ public class UserServiceTests {
     }
 
     @Test
-    public void shouldThrowAlreadyExistsExceptionGivenAlreadyExistentUserModelOnCreateUser () {
+    public void shouldThrowAlreadyExistsExceptionGivenAlreadyExistentUserModelOnCreateUser () throws ExecutionException, InterruptedException {
 
         User userToSave = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
@@ -106,27 +120,38 @@ public class UserServiceTests {
                 Gender.M, dob);
 
         String msgSvcMsg = "already exists";
-        String partialErrMsg = String.format("user with email %s ", userToSave.getEmail());
+        String partialErrMsg = String.format("user with email %s ", userToSave.getEmail().toLowerCase());
         String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
+        ApiGatewayUserRequestDto apiGatewayUserRequestDto = UserTestUtil.createApiGatewayUserDto(//null,
+                persistedModelEmail.trim().toLowerCase());
 
-        // Then
-        thrown.expect(AlreadyExistsException.class);
-        thrown.expectMessage(errMsg);
+         // Given
 
-        // Given
         given(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg})).willReturn(errMsg);
-        given(userRepository.findOneByEmail(userToSave.getEmail())).willReturn(result);
-
+        given(userRepository.findOneByEmail(userToSave.getEmail().toLowerCase())).willReturn(result);
 
         // When
-        userService.createUser(userToSave);
+        CompletableFuture future = userService.createUser(userToSave);
 
-        verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg});
-        verify(userRepository).findOneByEmail(userToSave.getEmail());
+        future.exceptionally(ex -> {
+
+            // Then
+
+            assertThat(ex instanceof AlreadyExistsException);
+            //assertThat(ex.getCause() instanceof java.util.concurrent.ExecutionException);
+            assertThat(((Exception)ex).getMessage().equalsIgnoreCase(errMsg));
+
+            verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg});
+            verify(userRepository).findOneByEmail(userToSave.getEmail());
+            verify(apiGatewayService).addUer(apiGatewayUserRequestDto);
+            return null;
+        });
+
     }
 
     @Test
-    public void shouldCreateNewUserGivenUserModel () {
+    public void shouldCreateNewUserGivenUserModel () throws ExecutionException, InterruptedException {
+
 
         User userToSave = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
@@ -142,18 +167,30 @@ public class UserServiceTests {
                 persistedModelPassword,
                 Gender.M, dob);
 
+
+
+        ApiGatewayUserRequestDto apiGatewayUserRequestDto = UserTestUtil.createApiGatewayUserDto(//null,
+                persistedModelEmail.trim().toLowerCase());
+
         // Given
         given(userRepository.findOneByEmail(userToSave.getEmail())).willReturn(null);
         given(userRepository.save(userToSave)).willReturn(createdUser);
 
+        // **** RETURNING AN ANSWER ****
+        given(apiGatewayService.addUer(apiGatewayUserRequestDto)).willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
+
         // When
-        User result = userService.createUser(userToSave);
+        CompletableFuture completableFutureResult = userService.createUser(userToSave);
+
+        // Get the result of the completable future
+        User result = (User) completableFutureResult.get();
 
         // Then
         assertThat(java.util.Objects.equals(result, createdUser));
 
         verify(userRepository).save(userToSave);
         verify(userRepository).findOneByEmail(userToSave.getEmail());
+        verify(apiGatewayService).addUer(apiGatewayUserRequestDto);
     }
 
     @Test

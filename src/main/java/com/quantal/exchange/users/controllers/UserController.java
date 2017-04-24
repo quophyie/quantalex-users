@@ -28,7 +28,7 @@ public class UserController {
 
   @JsonView(UserViews.CreatedUserView.class)
   @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<?> createUser(@RequestBody UserDto userDto){
+  public CompletableFuture<? extends ResponseEntity> createUser(@RequestBody UserDto userDto){
     return userManagementFacade.save(userDto);
   }
 

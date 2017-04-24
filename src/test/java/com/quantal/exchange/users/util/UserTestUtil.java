@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.util;
 
+import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.models.User;
@@ -29,13 +30,13 @@ public class UserTestUtil {
         return model;
     }
 
-    public static UserDto createUserDto (Long userId,
-                                         String firstName,
-                                         String lasstName,
-                                         String email,
-                                         String password,
-                                         Gender gender,
-                                         LocalDate dob){
+    public static UserDto createApiGatewayUserDto(Long userId,
+                                                  String firstName,
+                                                  String lasstName,
+                                                  String email,
+                                                  String password,
+                                                  Gender gender,
+                                                  LocalDate dob){
 
         UserDto userDto = new UserDto();
         userDto.setId(userId);
@@ -45,6 +46,15 @@ public class UserTestUtil {
         userDto.setGender(gender);
         userDto.setPassword(password);
         userDto.setDob(dob);
+        return userDto;
+    }
+    public static ApiGatewayUserRequestDto createApiGatewayUserDto(//Long customId,
+                                                                   String username){
+
+       ApiGatewayUserRequestDto userDto = new ApiGatewayUserRequestDto();
+      /* if(customId != null)
+            userDto.setCustom_id(customId.toString());*/
+       userDto.setUsername(username);
         return userDto;
     }
 }

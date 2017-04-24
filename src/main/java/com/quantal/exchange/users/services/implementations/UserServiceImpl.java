@@ -1,5 +1,7 @@
 package com.quantal.exchange.users.services.implementations;
 
+import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
+import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by dman on 08/03/2017.
@@ -28,36 +31,44 @@ public class UserServiceImpl extends AbstractRepositoryService<User, Long> imple
   private UserRepository userRepository;
   private MessageService messageService;
   private NullSkippingOrikaBeanMapper nullSkippingMapper;
+  private ApiGatewayService apiGatewayService;
   //private OrikaBeanMapper orikaBeanMapper;
 
   @Autowired
   public UserServiceImpl(UserRepository userRepository,
                          MessageService messageService,
                          OrikaBeanMapper orikaBeanMapper,
-                         NullSkippingOrikaBeanMapper nullSkippingMapper){
+                         NullSkippingOrikaBeanMapper nullSkippingMapper,
+                         ApiGatewayService apiGatewayService){
     super(userRepository, orikaBeanMapper, nullSkippingMapper);
 
    this.userRepository = userRepository;
    this.messageService = messageService;
    this.nullSkippingMapper = nullSkippingMapper;
    //this.orikaBeanMapper = orikaBeanMapper;
+    this.apiGatewayService = apiGatewayService;
   }
 
   @Override
-  public User createUser(User user) {
+  public CompletableFuture<User> createUser(User user) {
     if (!ObjectUtils.allNotNull(user)){
       throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
     }
 
+    user.setEmail(user.getEmail().toLowerCase());
     User existingUser = this.findOneByEmail(user.getEmail());
 
     if(existingUser != null ){
       String msg = String.format("user with email %s ", user.getEmail());
-      throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
+      CompletableFuture completableFuture  = new CompletableFuture();
+      AlreadyExistsException ex =  new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
+       completableFuture.completeExceptionally(ex);
+       return completableFuture;
     }
 
-    return this.saveOrUpdate(user);
-
+    ApiGatewayUserRequestDto gatewayUserDto =  this.createApiGatewayUserDto(null, user.getEmail());
+    return apiGatewayService.addUer(gatewayUserDto)
+    .thenApply(result -> this.saveOrUpdate(user));
   }
 
   @Override
@@ -131,6 +142,18 @@ public class UserServiceImpl extends AbstractRepositoryService<User, Long> imple
 
     nullSkippingMapper.map(updateData, userToUpdate);
     return this.saveOrUpdate(userToUpdate);
+  }
+
+  private ApiGatewayUserRequestDto createApiGatewayUserDto(Long customId, String username){
+    ApiGatewayUserRequestDto userDto = new ApiGatewayUserRequestDto();
+
+    /*if(customId != null)
+      userDto.setCustom_id(customId.toString());
+    else
+      userDto.setCustom_id("");*/
+
+    userDto.setUsername(username.trim().toLowerCase());
+    return userDto;
   }
 
 }
