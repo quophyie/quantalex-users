@@ -2,7 +2,9 @@ package com.quantal.exchange.users.services;
 
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
+import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
+import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.shared.objectmapper.OrikaBeanMapper;
 import com.quantal.shared.services.interfaces.MessageService;
@@ -15,6 +17,7 @@ import com.quantal.exchange.users.repositories.UserRepository;
 import com.quantal.exchange.users.services.implementations.UserServiceImpl;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import com.quantal.shared.util.CommonUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -24,6 +27,10 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.passay.CharacterRule;
+import org.passay.EnglishCharacterData;
+import org.passay.PasswordValidator;
+import org.passay.RuleResult;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -36,9 +43,7 @@ import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 /**
  * Created by dman on 10/04/2017.
@@ -64,10 +69,15 @@ public class UserServiceTests {
     @Mock
     private OrikaBeanMapper orikaBeanMapper;
 
+    @Mock
+    private PasswordService passwordService;
+
+    private PasswordValidator passwordValidator;
+
     private String persistedModelFirstName =  "createdUserFirstName";
     private String persistedModelLastName = "createdUserLastName";
     private String persistedModelEmail = "createdUser@quant.com";
-    private String persistedModelPassword = "createdUserPassword";
+    private String persistedModelPassword = "createdUserPassword@1";
     private LocalDate dob = LocalDate.of(1990, 01, 01);
     private Long userId = 1L;
 
@@ -81,7 +91,10 @@ public class UserServiceTests {
                 messageService,
                 orikaBeanMapper,
                 nullSkippingOrikaBeanMapper,
-                apiGatewayService);
+                apiGatewayService,
+                passwordService);
+
+        passwordValidator = new PasswordValidator(Arrays.asList( new CharacterRule(EnglishCharacterData.Digit, 1)));
     }
 
     @Test
@@ -90,15 +103,23 @@ public class UserServiceTests {
         String errMsg = "data provided cannot be null";
 
         // Then
-        thrown.expect(NullPointerException.class);
-        thrown.expectMessage(errMsg);
+        //thrown.expect(NullPointerException.class);
+        //thrown.expectMessage(errMsg);
 
         // Given
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED)).willReturn(errMsg);
 
         // When
-        userService.createUser(null);
-        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
+        try {
+            userService.createUser(null).get();
+        } catch (Throwable ex)
+
+        {
+            // Then
+
+            assertThat(ex instanceof NullPointerException).isTrue();
+            verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
+        }
 
     }
 
@@ -125,47 +146,80 @@ public class UserServiceTests {
         ApiGatewayUserRequestDto apiGatewayUserRequestDto = UserTestUtil.createApiGatewayUserDto(//null,
                 persistedModelEmail.trim().toLowerCase());
 
-         // Given
+        // Given
 
-        given(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg})).willReturn(errMsg);
+        given(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{partialErrMsg})).willReturn(errMsg);
         given(userRepository.findOneByEmail(userToSave.getEmail().toLowerCase())).willReturn(result);
+        try {
+            // When
+            CompletableFuture future = userService.createUser(userToSave);
+            future.get();
 
-        // When
-        CompletableFuture future = userService.createUser(userToSave);
-
-        future.exceptionally(ex -> {
+        } catch (Throwable ex) {
 
             // Then
 
-            assertThat(ex instanceof AlreadyExistsException);
+            assertThat(ex.getCause() instanceof AlreadyExistsException).isTrue();
             //assertThat(ex.getCause() instanceof java.util.concurrent.ExecutionException);
-            assertThat(((Exception)ex).getMessage().equalsIgnoreCase(errMsg));
+            assertThat(ex.getMessage().equalsIgnoreCase(errMsg));
 
-            verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg});
+            verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{partialErrMsg});
             verify(userRepository).findOneByEmail(userToSave.getEmail());
-            verify(apiGatewayService).addUer(apiGatewayUserRequestDto);
-            return null;
-        });
+        }
+
+    }
+
+    @Test
+    public void shouldThrowPasswordValidationExcectionGivenUserModelWithInvalidExceptionOnCreateUser () throws ExecutionException, InterruptedException {
+
+        User userToSave = UserTestUtil.createUserModel(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                "Password@",
+                Gender.M, dob);
+
+        // Given
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(false);
+        given(passwordService.checkPasswordValidity(userToSave.getPassword())).willReturn(ruleResult);
+        given(passwordService.getPasswordValidator()).willReturn(passwordValidator);
+
+        try {
+            // When
+            CompletableFuture future = userService.createUser(userToSave);
+
+            future.get();
+        } catch (Throwable ex) {
+
+            // Then
+            assertThat(ex.getCause() instanceof PasswordValidationException).isTrue();
+
+            verify(passwordService).checkPasswordValidity(userToSave.getPassword());
+            verify(passwordService).getPasswordValidator();
+        }
 
     }
 
     @Test
     public void shouldCreateNewUserGivenUserModel () throws ExecutionException, InterruptedException {
 
+        String hashedPassword = "$2a$10$ZpK.XFLeMPjsvwvFKx/CeOL.lncdO4vSyHh/MI3xl0I/2uIs8wSu6";
 
         User userToSave = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
-                persistedModelPassword,
+                hashedPassword,
                 Gender.M, dob);
 
         User createdUser = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
-                persistedModelPassword,
+                hashedPassword,
                 Gender.M, dob);
+
 
 
 
@@ -173,8 +227,15 @@ public class UserServiceTests {
                 persistedModelEmail.trim().toLowerCase());
 
         // Given
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(true);
+
+        given(passwordService.hashPassword(userToSave.getPassword())).willReturn(hashedPassword);
+        given(passwordService.checkPasswordValidity(userToSave.getPassword())).willReturn(ruleResult);
         given(userRepository.findOneByEmail(userToSave.getEmail())).willReturn(null);
-        given(userRepository.save(userToSave)).willReturn(createdUser);
+        given(userRepository.save(eq(userToSave))).willReturn(createdUser);
+
 
         // **** RETURNING AN ANSWER ****
         given(apiGatewayService.addUer(apiGatewayUserRequestDto)).willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
@@ -188,26 +249,34 @@ public class UserServiceTests {
         // Then
         assertThat(java.util.Objects.equals(result, createdUser));
 
-        verify(userRepository).save(userToSave);
+        verify(userRepository).save(eq(userToSave));
         verify(userRepository).findOneByEmail(userToSave.getEmail());
         verify(apiGatewayService).addUer(apiGatewayUserRequestDto);
+        verify(passwordService).hashPassword(userToSave.getPassword());
+        verify(passwordService).checkPasswordValidity(userToSave.getPassword());
+
     }
 
     @Test
     public void shouldThrowNullPointerExceptionGivenNullUserUpdateOnUpdateUser () {
 
-        String errMsg = "data provided cannot be null";
-
-        // Then
-        thrown.expect(NullPointerException.class);
-        thrown.expectMessage("Update object " + errMsg);
-
+        String errMsg = "Update object data provided cannot be null";
         // Given
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED)).willReturn(errMsg);
 
         // When
-        userService.updateUser(null);
-        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
+        try {
+            userService.updateUser(null).get();
+
+        } catch (Throwable ex){
+            assertThat(ex instanceof NullPointerException).isTrue();
+            assertThat(ex.getMessage()).isEqualToIgnoringCase(errMsg);
+            verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
+
+
+        }
+
+
     }
 
     @Test
@@ -215,17 +284,21 @@ public class UserServiceTests {
 
         String errMsg = "data provided cannot be null";
 
-        // Then
-        thrown.expect(NullPointerException.class);
-        thrown.expectMessage("UserId of update object "+errMsg);
 
         // Given
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED)).willReturn(errMsg);
+        try {
+            // When
+            userService.updateUser(new User()).get();
+        } catch (Throwable ex) {
+            // Then
+            Exception businessEx = CommonUtils.extractBusinessException(ex);
+            assertThat(businessEx instanceof NullPointerException);
+            assertThat(businessEx.getMessage().equalsIgnoreCase("UserId of update object " + errMsg));
 
-        // When
-        userService.updateUser(new User());
-        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
+            verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED);
 
+        }
     }
 
     @Test
@@ -238,24 +311,29 @@ public class UserServiceTests {
                 "UpdatedUserFirstName",
                 "UpdatedUserLastName",
                 persistedModelEmail,
-                persistedModelPassword,
+                null,
                 Gender.M, dob);
 
         // Given
-        given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {userClassName})).willReturn(errMsg);
-        given(userRepository.findOne(0L)).willReturn(null);
+        given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{userClassName})).willReturn(errMsg);
+        given(userRepository.findOne(0L)).willAnswer(invocationOnMock -> null);
 
-        // Then
-        thrown.expect(NotFoundException.class);
-        thrown.expectMessage(errMsg);
 
         // When
-        userService.updateUser(updateData);
+        try {
+            userService.updateUser(updateData).get();
+        } catch (Throwable ex) {
+
+            // Then
+            Exception businessEx = CommonUtils.extractBusinessException(ex);
+            assertThat(businessEx instanceof NotFoundException).isTrue();
+            assertThat(businessEx.getMessage()).isEqualToIgnoringCase(errMsg);
+        }
     }
 
 
     @Test
-    public void shouldUpdateUserGivenValidUpdateOnUpdateUser () {
+    public void shouldUpdateUserGivenValidUpdateDataOnUpdateUser () throws ExecutionException, InterruptedException {
 
         String updatedUserFirstName = "UpdatedUserFirstName";
         String updatedUserLastName = "UpdatedUserLastName";
@@ -284,13 +362,14 @@ public class UserServiceTests {
                 Gender.M, dob);
 
         // Given
-        given(userRepository.findOne(userId)).willReturn(persistedUser);
-        given(userRepository.save(updatedUser)).willReturn(updatedUser);
+        given(userRepository.findOne(userId))
+                .willAnswer(invocationOnMock -> persistedUser);
+        given(userRepository.save(updatedUser))
+                .willAnswer(invocationOnMock -> updatedUser);
         doNothing().when(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
 
         // When
-        User result = userService.updateUser(updateData);
-
+        User result = (User) userService.updateUser(updateData).get();
         // Then
         assertThat(java.util.Objects.equals(updatedUser, result));
 
@@ -302,7 +381,110 @@ public class UserServiceTests {
     }
 
     @Test
-    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongToTheUserToBeUpdated () {
+    public void shouldThrowInvalidUserPasswordGivenInvalidPasswordOnUpdateUser () throws ExecutionException, InterruptedException {
+
+        String updatePassword = "updatePassword";
+
+       // thrown.expect(java.util.concurrent.ExecutionException.class);
+
+        User updateData = UserTestUtil.createUserModel(userId,
+                null,
+                null,
+                null,
+                updatePassword,
+                null,
+                null);
+
+        User persistedUser = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+        // Given
+        given(userRepository.findOne(userId)).willReturn(persistedUser);
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(false);
+        given(passwordService.checkPasswordValidity(updateData.getPassword())).willReturn(ruleResult);
+        given(passwordService.getPasswordValidator()).willReturn(passwordValidator);
+
+        doNothing().when(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
+
+
+       try {
+            // When
+            CompletableFuture future = userService.updateUser(updateData);
+            future.get();
+        } catch (Throwable ex){
+           Exception businessEx = CommonUtils.extractBusinessException(ex);
+            assertThat(businessEx instanceof PasswordValidationException).isTrue();
+            verify(userRepository).findOne(userId);
+          //  verify(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
+            verify(passwordService).checkPasswordValidity(updateData.getPassword());
+            verify(passwordService).getPasswordValidator();
+        }
+
+    }
+
+    @Test
+    public void shouldUpdateUserGiveValidPasswordOnUpdateUser () {
+
+        String updatePassword = "updatePassword@1";
+        String updatedPasswordHash = "$2a$10$ZpK.XFLeMPjsvwvFKx/CeOL.lncdO4vSyHh/MI3xl0I/2uIs8wSu6";
+
+
+        User updateData = UserTestUtil.createUserModel(userId,
+                null,
+                null,
+                null,
+                updatePassword,
+                null,
+                null);
+
+        User persistedUser = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, dob);
+
+        User updatedUser = UserTestUtil.createUserModel(userId,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                updatedPasswordHash,
+                Gender.M, dob);
+
+        // Given
+        given(userRepository.findOne(userId)).willReturn(persistedUser);
+        given(userRepository.save(updatedUser)).willReturn(updatedUser);
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(true);
+        given(passwordService.checkPasswordValidity(updateData.getPassword())).willReturn(ruleResult);
+
+        doNothing().when(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
+
+        // When
+        userService.updateUser(updateData)
+                .thenAccept(result -> {
+
+                    // Then
+                    assertThat(java.util.Objects.equals(updatedUser, result));
+
+                    verify(userRepository).findOne(userId);
+                    verify(userRepository).save(updatedUser);
+                    verify(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
+                    verify(passwordService).checkPasswordValidity(updateData.getPassword());
+
+                });
+
+    }
+
+    @Test
+    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongToTheUserToBeUpdated () throws ExecutionException, InterruptedException {
 
         String updateEmail = "user2@quant.com";
 
@@ -327,8 +509,6 @@ public class UserServiceTests {
         String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
 
         // Then
-        thrown.expect(AlreadyExistsException.class);
-        thrown.expectMessage(errMsg);
         User updateModel2 = UserTestUtil.createUserModel(2L,
                 "userFName",
                 "userLName",
@@ -340,22 +520,26 @@ public class UserServiceTests {
         List<User> users = Arrays.asList(persistedUser, updateModel2);
         // Given
         given(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg})).willReturn(errMsg);
-        given(userRepository.findAllByEmailIgnoreCase(updateData.getEmail())).willReturn(users);
-        given(userRepository.findOne(userId)).willReturn(persistedUser);
+        given(userRepository.findAllByEmailIgnoreCase(updateData.getEmail())).willAnswer(invocationOnMock -> users);
+        given(userRepository.findOne(userId)).willAnswer(invocationOnMock -> persistedUser);
 
 
         // When
-        userService.updateUser(updateData);
-
-        verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS,  new String[]{partialErrMsg});
-        verify(userRepository).countByEmailIgnoreCase(updateData.getEmail());
-        verify(userRepository).findOne(userId);
+        try {
+            userService.updateUser(updateData).get();
+        } catch (Throwable ex) {
+            Throwable businessEx = CommonUtils.extractBusinessException(ex);
+            assertThat(businessEx instanceof AlreadyExistsException).isTrue();
+            verify(messageService).getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{partialErrMsg});
+            verify(userRepository).findAllByEmailIgnoreCase(updateData.getEmail());
+            verify(userRepository).findOne(userId);
+        }
 
 
     }
 
     @Test
-    public void shouldReturnOneUserGivenUserIdOnFindOne (){
+    public void shouldReturnOneUserGivenUserIdOnFindOne () throws ExecutionException, InterruptedException {
 
         User user = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
@@ -370,7 +554,7 @@ public class UserServiceTests {
 
         // When
 
-        User result = userService.findOne(userId);
+        User result = userService.findOne(userId).get();
 
         // Then
 
@@ -380,7 +564,7 @@ public class UserServiceTests {
     }
 
     @Test
-    public void shouldReturnOneUserGivenUserEmailOnFindByEmail (){
+    public void shouldReturnOneUserGivenUserEmailOnFindByEmail () throws ExecutionException, InterruptedException {
 
         User user = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
@@ -395,7 +579,7 @@ public class UserServiceTests {
 
         // When
 
-        User result = userService.findOneByEmail(persistedModelEmail);
+        User result = userService.findOneByEmail(persistedModelEmail).get();
 
         // Then
 
@@ -405,14 +589,17 @@ public class UserServiceTests {
     }
 
     @Test
-    public void shouldDeleteUserGivenUserIdOnDelete (){
+    public void shouldDeleteUserGivenUserIdOnDelete () throws ExecutionException, InterruptedException {
         // Given
 
        doNothing().when(userRepository).delete(userId);
 
+       doAnswer(invocationOnMock -> CompletableFuture.completedFuture(null))
+               .when(userRepository).delete(userId);
+
         // When
 
-        userService.deleteById(userId);
+        userService.deleteById(userId).get();
 
         // Then
 
@@ -423,19 +610,22 @@ public class UserServiceTests {
     public void shouldThrowNotFoundExceptionGivenNonExistentUserIdOnDeletUserById () {
 
 
-        doThrow(new EmptyResultDataAccessException(0)).when(userRepository).delete(userId);
-
-        // Then
-        thrown.expect(NotFoundException.class);
+        doAnswer(invocationOnMock -> {
+            throw new EmptyResultDataAccessException(0);
+        }
+        ).when(userRepository).delete(userId);
 
         // When
-        userService.deleteById(userId);
-
-        verify(userRepository).delete(userId);
+        try {
+            userService.deleteById(userId).get();
+        } catch (Throwable ex) {
+            assertThat(ex.getCause() instanceof NotFoundException);
+            verify(userRepository).delete(userId);
+        }
     }
 
     @Test
-    public void shouldReturnTheSavedUserGivenUserModelToSaveOnSaveOrUpdate (){
+    public void shouldReturnTheSavedUserGivenUserModelToSaveOnSaveOrUpdate () throws ExecutionException, InterruptedException {
 
         User expected = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
@@ -457,7 +647,7 @@ public class UserServiceTests {
 
         // When
 
-        User result = userService.saveOrUpdate(saveData);
+        User result = userService.saveOrUpdate(saveData).get();
 
         // Then
 

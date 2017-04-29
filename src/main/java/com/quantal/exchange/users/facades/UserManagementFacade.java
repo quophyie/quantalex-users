@@ -41,12 +41,14 @@ public class UserManagementFacade extends AbstractBaseFacade {
     this.messageService = messageService;
   }
 
-  public CompletableFuture<? extends ResponseEntity> save(UserDto userDto){
+  public CompletableFuture<ResponseEntity> save(UserDto userDto){
         User userToCreate = toModel(userDto, User.class);
-        return userService.createUser(userToCreate)
+        return userService
+                .createUser(userToCreate)
                 .thenApply(created -> {
                     UserDto createdDto = toDto(created, UserDto.class);
-                    return toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                    ResponseEntity responseEntity =toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                    return responseEntity;
                 })
                 .exceptionally( ex -> {
                     ResponseEntity responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR, new String[]{User.class.getSimpleName()}), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -60,42 +62,69 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
   }
 
-  public ResponseEntity<?> updateUser(Long userId, UserDto userUpdateDto){
+  public CompletableFuture<ResponseEntity> updateUser(Long userId, UserDto userUpdateDto){
 
       if (userUpdateDto == null) {
-          return toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
+          ResponseEntity<?> responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
+          return CompletableFuture.completedFuture(responseEntity);
       }
-      try {
           User userUpdateModel = toModel(userUpdateDto, new User(), false);
           userUpdateModel.setId(userId);
-          User updated = userService.updateUser(userUpdateModel);
-          UserDto updatedDto = toDto(updated, UserDto.class);
-          return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
-      } catch (NotFoundException npe) {
-          return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
-      }
-      catch (AlreadyExistsException aee) {
-          return toRESTResponse(null, aee.getMessage(), HttpStatus.CONFLICT);
-      }
+          return userService.updateUser(userUpdateModel)
+                  .thenApply(updated -> {
+                      UserDto updatedDto = toDto(updated, UserDto.class);
+                      return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
+                  })
+                  .exceptionally( ex -> {
+                      ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR, new String[]{User.class.getSimpleName()}), HttpStatus.INTERNAL_SERVER_ERROR);
+
+                      if (((Throwable)ex).getCause() instanceof AlreadyExistsException) {
+                          responseEntity = toRESTResponse(null, ((Throwable)ex).getCause().getMessage(), HttpStatus.CONFLICT);
+                      } else if (((Throwable)ex).getCause() instanceof NotFoundException) {
+                          responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+                      }
+
+                      return responseEntity;
+                  });
+
+
   }
 
-    public ResponseEntity<?> findUserById(Long userId){
-        User user = userService.findOne(userId);
-        UserDto userDto = toModel(user, UserDto.class);
-        if (user == null) {
-            return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
-        }
+    public CompletableFuture<ResponseEntity> findUserById(Long userId){
+        return userService.findOne(userId)
+                .thenApply(user -> {
+                    UserDto userDto = toModel(user, UserDto.class);
+                    ResponseEntity<ResponseDto<User>> responseEntity = null;
+                    if (user == null) {
+                        responseEntity = (ResponseEntity<ResponseDto<User>>) toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+                        return responseEntity;
+                    }
 
-        return toRESTResponse(userDto, messageService.getMessage(MessageCodes.SUCCESS));
+                    responseEntity = (ResponseEntity<ResponseDto<User>>) toRESTResponse(userDto, messageService.getMessage(MessageCodes.SUCCESS));
+
+                    return responseEntity;
+                });
+
     }
 
-    public ResponseEntity<?> deleteByUserId(Long userId) {
-        try {
-            userService.deleteById(userId);
-            return toRESTResponse(null, messageService.getMessage(MessageCodes.SUCCESS));
-        } catch (NotFoundException nfe){
-            return toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
-        }
+
+    public CompletableFuture<?> deleteByUserId(Long userId) {
+
+            return userService.deleteById(userId)
+                    .thenApply(ret -> {
+                        ResponseEntity<?> responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.SUCCESS));
+                        return responseEntity;
+                    })
+                   // .thenCompose(responseEntity -> responseEntity)
+                    .exceptionally(ex -> {
+                        CompletableFuture exFuture = new CompletableFuture();
+                        ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR), HttpStatus.INTERNAL_SERVER_ERROR);
+                        if (ex.getCause() instanceof NotFoundException) {
+                            responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+                            return responseEntity;
+                        }
+                        return  responseEntity;
+                    });
     }
 
   public CompletableFuture<String> getFunnyCat(){

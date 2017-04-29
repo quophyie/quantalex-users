@@ -11,13 +11,13 @@ import java.time.LocalDate;
  * Created by dman on 28/03/2017.
  */
 public class UserTestUtil {
-    public static User createUserModel (Long userId,
-                                        String firstName,
-                                        String lasstName,
-                                        String email,
-                                        String password,
-                                        Gender gender,
-                                        LocalDate dob){
+    public static User createUserModel(Long userId,
+                                       String firstName,
+                                       String lasstName,
+                                       String email,
+                                       String password,
+                                       Gender gender,
+                                       LocalDate dob) {
 
         User model = new User();
         model.setId(userId);
@@ -36,7 +36,7 @@ public class UserTestUtil {
                                                   String email,
                                                   String password,
                                                   Gender gender,
-                                                  LocalDate dob){
+                                                  LocalDate dob) {
 
         UserDto userDto = new UserDto();
         userDto.setId(userId);
@@ -48,13 +48,15 @@ public class UserTestUtil {
         userDto.setDob(dob);
         return userDto;
     }
-    public static ApiGatewayUserRequestDto createApiGatewayUserDto(//Long customId,
-                                                                   String username){
 
-       ApiGatewayUserRequestDto userDto = new ApiGatewayUserRequestDto();
+    public static ApiGatewayUserRequestDto createApiGatewayUserDto(//Long customId,
+                                                                   String username) {
+
+        ApiGatewayUserRequestDto userDto = new ApiGatewayUserRequestDto();
       /* if(customId != null)
             userDto.setCustom_id(customId.toString());*/
-       userDto.setUsername(username);
+        userDto.setUsername(username);
         return userDto;
     }
+
 }

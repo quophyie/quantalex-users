@@ -2,6 +2,7 @@ package com.quantal.exchange.users.facades;
 
 
 import com.quantal.exchange.users.constants.MessageCodes;
+import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.dto.ResponseDto;
 import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.shared.util.TestUtil;
@@ -28,8 +29,10 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Java6Assertions.assertThat;
+import static org.assertj.core.api.Java6Assertions.in;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -60,6 +63,9 @@ public class UserManagementFacadesTest {
 
     @MockBean
     private MessageService messageService;
+
+    @MockBean
+    private PasswordService passwordService;
 
 
     @Autowired
@@ -106,18 +112,12 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, persistedModelDob);
 
-        CompletableFuture userServiceCompletableFuture = new CompletableFuture();
-        userServiceCompletableFuture.complete(createdModel);
         given(this.userService
                 .createUser(eq(userModelFromDto)))
-                .willReturn(userServiceCompletableFuture);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(createdModel));
 
         given(this.messageService.getMessage(MessageCodes.ENTITY_CREATED, replacements))
                 .willReturn(successMsg);
-
-        CompletableFuture completableFuture = new CompletableFuture();
-        ResponseEntity<?> completableFutureResponseEntity = new ResponseEntity<Object>(createdModel, HttpStatus.CREATED);
-        completableFuture.complete(completableFutureResponseEntity);
 
         ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
         UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
@@ -143,7 +143,7 @@ public class UserManagementFacadesTest {
     @Test
     public void shouldReturn409ConflictGivenAUserThatAlreadyExists() throws Exception {
 
-        String persistedModelFirstName =  "createdUserFirstName";
+        String persistedModelFirstName = "createdUserFirstName";
         String persistedModelLastName = "createdUserLastName";
         String persistedModelEmail = "createdUser@quant.com";
         String persistedModelPassword = "createdUserPassword";
@@ -174,23 +174,20 @@ public class UserManagementFacadesTest {
                     return future;
                 });
 
-        //ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
-        userManagementFacade.save(createUserDto).thenAccept(responseEntity -> {
-            String message = TestUtil.getResponseDtoMessage(responseEntity);
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
 
-            HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-            assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
-            assertThat(errMsg).isEqualToIgnoringCase(message);
+        HttpStatus httpStatusCode = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
 
-            verify(userService, times(1)).createUser(eq(userModelFromDto));
-        });
-
-    }
+        verify(userService, times(1)).createUser(eq(userModelFromDto));
+     }
 
     @Test
     public void shouldReturn400BadRequest() throws Exception {
 
-        String persistedModelFirstName =  "createdUserFirstName";
+        String persistedModelFirstName = "createdUserFirstName";
         String persistedModelLastName = "createdUserLastName";
         String persistedModelEmail = "createdUser@quant.com";
         String persistedModelPassword = "createdUserPassword";
@@ -199,7 +196,7 @@ public class UserManagementFacadesTest {
         String errMsg = "data provided cannot be null";
         String[] replacements = new String[]{User.class.getSimpleName()};
 
-        User userModelFromDto =  UserTestUtil.createUserModel(null,
+        User userModelFromDto = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
@@ -220,30 +217,27 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .createUser(eq(userModelFromDto)))
-                .willAnswer(invocationOnMock ->  {
-                    CompletableFuture future  = new CompletableFuture();
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new NullPointerException(errMsg));
                     return future;
 
                 });
 
-       // ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
 
-        userManagementFacade.save(createUserDto).thenAccept( responseEntity -> {
-            String message = TestUtil.getResponseDtoMessage(responseEntity);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
 
-            HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-            assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(errMsg).isEqualToIgnoringCase(message);
+        HttpStatus httpStatusCode = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
 
-            verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
-            verify(userService, times(1)).createUser(eq(userModelFromDto));
-        });
-
+        verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
+        verify(userService, times(1)).createUser(eq(userModelFromDto));
     }
 
     @Test
-    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongingToTheUserToBeUpdated () {
+    public void shouldThrowAlreadyExistsExceptionGivenUserUpdateDataWithAnExistingEmailNotBelongingToTheUserToBeUpdated () throws ExecutionException, InterruptedException {
 
         String updatedUserFirstName = "UpdatedUserFirstName";
         String updatedUserLastName = "UpdatedUserLastName";
@@ -272,13 +266,16 @@ public class UserManagementFacadesTest {
         // Given
         given(this.userService
                 .updateUser(eq(updateModel)))
-                .willThrow(new AlreadyExistsException(errMsg));
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
+                    future.completeExceptionally(new AlreadyExistsException(errMsg));
+                    return future;
+                });
 
         // When
-        ResponseEntity<?> responseEntity =   userManagementFacade.updateUser(userId, updateData);;
-
+        ResponseEntity responseEntity = userManagementFacade.updateUser(userId, updateData).get();
         // Then
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        HttpStatus httpStatusCode = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
         assertThat(errMsg).isEqualToIgnoringCase(message);
@@ -286,14 +283,12 @@ public class UserManagementFacadesTest {
         UserDto result = TestUtil.getResponseDtoData(responseEntity);
         assertThat(result).isNull();
         verify(userService).updateUser(eq(updateModel));
-
-
     }
 
     @Test
     public void shouldUpdateUserWithPartialData() throws Exception {
 
-        String persistedModelFirstName =  "persistedDtoFirstName";
+        String persistedModelFirstName = "persistedDtoFirstName";
         String persistedModelLastName = "persistedDtoLastName";
         String persistedModelEmail = "persistedModel@quant.com";
         String persistedModelPassword = "persistedDtoPassword";
@@ -333,11 +328,12 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .updateUser(eq(updateModel)))
-                .willReturn(updateModel);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(updateModel));
 
-        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
+        CompletableFuture future = userManagementFacade.updateUser(id, updateDto);
+        ResponseEntity responseEntity = (ResponseEntity) future.get();
 
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        HttpStatus httpStatusCode = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
         String message = TestUtil.getResponseDtoMessage(responseEntity);
         assertThat(successMsg).isEqualToIgnoringCase(message);
@@ -353,24 +349,24 @@ public class UserManagementFacadesTest {
         verify(userService, times(1)).updateUser(eq(updateModel));
         verify(messageService).getMessage(MessageCodes.ENTITY_UPDATED, replacements);
 
+
     }
 
     @Test
     public void shouldUpdateUserWithFullData() throws Exception {
 
         Long id = 1L;
-        String persistedModelFirstName =  "persistedUserFirstName";
+        String persistedModelFirstName = "persistedUserFirstName";
         String persistedModelLastName = "persistedUserLastName";
         String persistedModelEmail = "persistedUser@quant.com";
         String persistedModelPassword = "persistedUserPassword";
         LocalDate dob = LocalDate.of(1990, 01, 01);
 
-        String updatedUserFirstName =  "updatedUserFirstName";
+        String updatedUserFirstName = "updatedUserFirstName";
         String updatedUserLastName = "updatedUserLastName";
         String updatedEmail = "updatedUser@quant.com";
         String updatedUserPassword = "updatedUserPassword";
         LocalDate updatedDob = LocalDate.of(1980, 11, 01);
-
 
 
         User persistedModel = UserTestUtil.createUserModel(id,
@@ -400,18 +396,17 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .findOne(id))
-                .willReturn(persistedModel);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(persistedModel));
 
         given(this.userService
                 .updateUser(eq(updateModel)))
-                .willReturn(updateModel);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(updateModel));
 
-        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, updateDto);
-
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        ResponseEntity responseEntity = userManagementFacade.updateUser(id, updateDto).get();
+        HttpStatus httpStatusCode = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
 
-        UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
+        UserDto result = ((ResponseDto<UserDto>) responseEntity.getBody()).getData();
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(id);
@@ -421,10 +416,11 @@ public class UserManagementFacadesTest {
         assertThat(result.getPassword()).isEqualTo(updatedUserPassword);
         assertThat(result.getGender()).isEqualTo(Gender.F);
         verify(userService, times(1)).updateUser(eq(updateModel));
+
     }
 
     @Test
-    public void shouldReturnUserGivenUserId() {
+    public void shouldReturnUserGivenUserId() throws ExecutionException, InterruptedException {
 
         User persistedModel = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
@@ -437,14 +433,14 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .findOne(userId))
-                .willReturn(persistedModel);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(persistedModel));
 
         given(this.messageService
                 .getMessage(MessageCodes.SUCCESS))
                 .willReturn("OK");
 
 
-        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(userId);
+        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(userId).get();
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
@@ -468,10 +464,10 @@ public class UserManagementFacadesTest {
         given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()})).willReturn(errMsg);
 
         given(this.userService
-                .findOne(userId))
-                .willReturn(null);
+                .findOne(2L))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(null));
 
-        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(2L);
+        ResponseEntity<?> responseEntity = userManagementFacade.findUserById(2L).get();
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
@@ -496,10 +492,10 @@ public class UserManagementFacadesTest {
 
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(successMsg);
 
-        doNothing().when(userService)
+        doAnswer(invocationOnMock -> CompletableFuture.completedFuture(null)).when(userService)
                 .deleteById(userId);
 
-        ResponseEntity<?> responseEntity = userManagementFacade.deleteByUserId(userId);
+        ResponseEntity responseEntity = (ResponseEntity) userManagementFacade.deleteByUserId(userId).get();
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.OK);
@@ -519,11 +515,15 @@ public class UserManagementFacadesTest {
         Long userToDelId = 2L;
         given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()})).willReturn(errMsg);
 
-        doThrow(NotFoundException.class)
+        doAnswer(invocationOnMock -> {
+            CompletableFuture<Void> future = new CompletableFuture();
+            future.completeExceptionally(new NotFoundException(""));
+            return future;
+        })
                 .when(this.userService)
                 .deleteById(userToDelId);
 
-        ResponseEntity<?> responseEntity = userManagementFacade.deleteByUserId(userToDelId);
+        ResponseEntity responseEntity = (ResponseEntity) userManagementFacade.deleteByUserId(userToDelId).get();
 
         HttpStatus httpStatusCode  = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
@@ -542,14 +542,16 @@ public class UserManagementFacadesTest {
         UserDto userDto = null;
         String[] replacements = new String[]{User.class.getSimpleName()};
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements )).willReturn(errMsg);
-        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(2L, userDto);
+       userManagementFacade.updateUser(2L, userDto)
+               .thenAccept(responseEntity -> {
+                   HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+                   assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+                   String message = TestUtil.getResponseDtoMessage(responseEntity);
+                   assertThat(errMsg).isEqualToIgnoringCase(message);
 
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
-        String message = TestUtil.getResponseDtoMessage(responseEntity);
-        assertThat(errMsg).isEqualToIgnoringCase(message);
+                   verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements );
 
-        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements );
+               });
 
     }
 
@@ -575,7 +577,11 @@ public class UserManagementFacadesTest {
 
         given(this.userService
                 .updateUser(userUpdateData))
-                .willThrow(new NotFoundException(errMsg));
+                .willAnswer( invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
+                    future.completeExceptionally(new NotFoundException(errMsg));
+                    return future;
+                });
 
         given(messageService.getMessage(MessageCodes.NOT_FOUND,replacements )).willReturn(errMsg);
         UserDto userDto = UserTestUtil.createApiGatewayUserDto(id,
@@ -585,13 +591,16 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, null);
 
-        ResponseEntity<?> responseEntity = userManagementFacade.updateUser(id, userDto);
+        userManagementFacade.updateUser(id, userDto)
+                .thenAccept(responseEntity -> {
+                    HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+                    assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
+                    String message = TestUtil.getResponseDtoMessage(responseEntity);
+                    assertThat("user not found").isEqualToIgnoringCase(message);
+                    verify(userService, times(1)).updateUser(userUpdateData);
 
-        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-        assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
-        String message = TestUtil.getResponseDtoMessage(responseEntity);
-        assertThat("user not found").isEqualToIgnoringCase(message);
-        verify(userService, times(1)).updateUser(userUpdateData);
+                });
+
 
     }
 

@@ -28,23 +28,23 @@ public class UserController {
 
   @JsonView(UserViews.CreatedUserView.class)
   @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public CompletableFuture<? extends ResponseEntity> createUser(@RequestBody UserDto userDto){
+  public CompletableFuture<ResponseEntity> createUser(@RequestBody UserDto userDto){
     return userManagementFacade.save(userDto);
   }
 
   @JsonView(UserViews.CreatedUserView.class)
   @PutMapping(value="/{userId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<?> updateeUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
+  public CompletableFuture<ResponseEntity> updateeUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
     return userManagementFacade.updateUser(userId, userDto);
   }
 
   @GetMapping(value="/{userId}")
-  public ResponseEntity<?> findUserbyId(@PathVariable Long userId){
+  public CompletableFuture<ResponseEntity> findUserbyId(@PathVariable Long userId){
     return userManagementFacade.findUserById(userId);
   }
 
   @DeleteMapping(value="/{userId}")
-  public ResponseEntity<?> deleteUserbyId(@PathVariable Long userId){
+  public CompletableFuture<?> deleteUserbyId(@PathVariable Long userId){
     return userManagementFacade.deleteByUserId(userId);
   }
 

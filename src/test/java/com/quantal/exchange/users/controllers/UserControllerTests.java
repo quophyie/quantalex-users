@@ -1,5 +1,8 @@
 package com.quantal.exchange.users.controllers;
 
+import com.quantal.exchange.users.UsersApplication;
+import com.quantal.exchange.users.config.security.WebSecurityConfig;
+import com.quantal.exchange.users.config.web.WebStartupConfig;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.facades.UserManagementFacade;
@@ -11,12 +14,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -37,9 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(UserController.class)
+@WebMvcTest(value = UserController.class, secure = false)
+//@ContextConfiguration(classes={WebStartupConfig.class, WebSecurityConfig.class})
 //@DataJpaTest
-//@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT, classes = MicroserviceApplication.class)
+//@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT/*, classes = UsersApplication.class*/)
 public class UserControllerTests {
 
     private String persistedUserFirstName = "updatedUserFirstName";
@@ -115,15 +122,20 @@ public class UserControllerTests {
 
         ResponseEntity response = new ResponseEntity(updatedUser, HttpStatus.OK);
 
+        //given(this.userManagementFacade.updateUser(userId,updateData))
+        //        .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(response));
+
         given(this.userManagementFacade.updateUser(userId,updateData))
-                .willReturn(response);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(response));
 
 
-        this.mvc.perform(put("/users/{id}", new Object[]{userId})
+        MvcResult asyncResult = this.mvc.perform(put("/users/{id}", new Object[]{userId})
 
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(updateData)))
+                .andReturn();
 
+        mvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk())
                 .andExpect(
                         json()
@@ -160,13 +172,14 @@ public class UserControllerTests {
         ResponseEntity response = new ResponseEntity(userDto, HttpStatus.OK);
 
         given(this.userManagementFacade.findUserById(userId))
-                .willReturn(response);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(response));
 
 
-        this.mvc.perform(get("/users/{id}", new Object[]{userId})
+        MvcResult asyncResult = this.mvc
+                .perform(get("/users/{id}", new Object[]{userId})
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-
+        mvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk())
                 .andExpect(
                         json()
@@ -197,13 +210,16 @@ public class UserControllerTests {
         ResponseEntity response = new ResponseEntity(new ResponseMessageDto("OK", 200), HttpStatus.OK);
 
         given(this.userManagementFacade.deleteByUserId(userId))
-                .willReturn(response);
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(response));
 
 
-        this.mvc.perform(delete("/users/{id}", new Object[]{userId})
-
+        MvcResult asyncResult = this
+                .mvc
+                .perform(delete("/users/{id}", new Object[]{userId})
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
 
+        mvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk())
                 .andExpect(
                         json()
@@ -234,10 +250,13 @@ public class UserControllerTests {
                 null);
 
         ResponseEntity response = new ResponseEntity(createdUserDto, HttpStatus.OK);
-        CompletableFuture completableFuture = new CompletableFuture();
-        completableFuture.complete(response);
+
         given(this.userManagementFacade.save(userDto))
-                .willReturn(completableFuture);
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture completableFuture = new CompletableFuture();
+                    completableFuture.complete(response);
+                    return completableFuture;
+                });
 
         MvcResult asyscResult = this.mvc.perform(post("/users/")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)

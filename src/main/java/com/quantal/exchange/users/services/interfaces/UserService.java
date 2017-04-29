@@ -2,6 +2,7 @@ package com.quantal.exchange.users.services.interfaces;
 
 import com.quantal.exchange.users.models.User;
 import com.quantal.shared.services.interfaces.RepositoryService;
+import com.quantal.shared.services.interfaces.RepositoryServiceAsync;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -9,14 +10,14 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Created by dman on 08/03/2017.
  */
-public interface UserService extends RepositoryService<User, Long> {
+public interface UserService extends RepositoryServiceAsync<User, Long> {
 
   CompletableFuture<User> createUser(User user);
-  User saveOrUpdate(User user);
-  User findOneByEmail(String email);
-  //User findOne(Long userid);
-  void deleteById(Long userid);
-  User updateUser(User updateData);
-  Long countByEmailIgnoreCase(String email);
-  List<User> findAllByEmailIgnoreCase(String email);
+  CompletableFuture<User> saveOrUpdate(User user);
+  CompletableFuture<User> findOneByEmail(String email);
+  //CompletableFuture<User> findOne(Long userid);
+  CompletableFuture<Void> deleteById(Long userid);
+  CompletableFuture  updateUser(User updateData) ;
+  CompletableFuture<Long> countByEmailIgnoreCase(String email);
+  CompletableFuture<List<User>> findAllByEmailIgnoreCase(String email);
 }
