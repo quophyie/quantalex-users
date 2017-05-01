@@ -66,13 +66,12 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         return this.findOneByEmail(user.getEmail())
                 .thenCompose(existingUser -> {
 
-
                     if (existingUser != null) {
                         String msg = String.format("user with email %s ", user.getEmail());
                         throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                     }
 
-                   checkAndSetPassword(user);
+                    checkAndSetPassword(user);
                     ApiGatewayUserRequestDto gatewayUserDto = this.createApiGatewayUserDto(null, user.getEmail());
                     return apiGatewayService.addUer(gatewayUserDto)
                             .thenCompose(result -> this.saveOrUpdate(user));
@@ -111,8 +110,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
         return CompletableFuture.runAsync(() -> userRepository.delete(userId))
                 .exceptionally((exception) -> {
-                     if (exception.getCause() instanceof EmptyResultDataAccessException) {
-
+                    if (exception.getCause() instanceof EmptyResultDataAccessException) {
                         throw new NotFoundException("");
                     }
                     throw new RuntimeException(exception.getCause());
@@ -210,9 +208,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                     String hashedPassword = passwordService.hashPassword(user.getPassword());
                     user.setPassword(hashedPassword);
                 }
-
             }
-
             return user;
         }
 }
