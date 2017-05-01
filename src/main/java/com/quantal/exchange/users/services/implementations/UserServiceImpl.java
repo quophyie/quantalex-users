@@ -22,11 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Created by dman on 08/03/2017.
@@ -71,30 +69,10 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
                     if (existingUser != null) {
                         String msg = String.format("user with email %s ", user.getEmail());
-                        CompletableFuture completableFuture = new CompletableFuture();
-                        AlreadyExistsException ex = new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
-                        completableFuture.completeExceptionally(ex);
-                        return completableFuture;
+                        throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                     }
 
-                    RuleResult passwordValidationResult = passwordService.checkPasswordValidity(user.getPassword());
-
-                    if (!passwordValidationResult.isValid()) {
-                        String errMessages = passwordService
-                                .getPasswordValidator()
-                                .getMessages(passwordValidationResult)
-                                .stream()
-                                .reduce((s, s2) -> s + "\n" + s2).orElse("");
-
-                        CompletableFuture completableFuture = new CompletableFuture();
-
-                        completableFuture.completeExceptionally(new PasswordValidationException(errMessages));
-                        return completableFuture;
-                    } else {
-                        String hashedPassword = passwordService.hashPassword(user.getPassword());
-                        user.setPassword(hashedPassword);
-                    }
-
+                   checkAndSetPassword(user);
                     ApiGatewayUserRequestDto gatewayUserDto = this.createApiGatewayUserDto(null, user.getEmail());
                     return apiGatewayService.addUer(gatewayUserDto)
                             .thenCompose(result -> this.saveOrUpdate(user));
@@ -133,7 +111,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
         return CompletableFuture.runAsync(() -> userRepository.delete(userId))
                 .exceptionally((exception) -> {
-                    if (exception.getCause() instanceof EmptyResultDataAccessException) {
+                     if (exception.getCause() instanceof EmptyResultDataAccessException) {
 
                         throw new NotFoundException("");
                     }
@@ -142,7 +120,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
     }
 
     @Override
-    public CompletableFuture updateUser(User updateData) {
+    public CompletableFuture<User> updateUser(User updateData) {
 
         if (!ObjectUtils.allNotNull(updateData)) {
             String errMsg = String.format(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
@@ -156,67 +134,20 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             throw new NullPointerException(errMsg);
         }
 
-
         return this.findOne(userId)
                 .thenApply(userToUpdate -> {
 
                     if (userToUpdate == null) {
                         throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
                     }
-
-                    //If we are doing a password update
-                    if (!StringUtils.isEmpty(updateData.getPassword())) {
-
-                        RuleResult passwordValidationResult = passwordService.checkPasswordValidity(updateData.getPassword());
-
-                        if (!passwordValidationResult.isValid()) {
-                            String errMsg = passwordService
-                                    .getPasswordValidator()
-                                    .getMessages(passwordValidationResult)
-                                    .stream()
-                                    .reduce((s, s2) -> s + "\n" + s2).orElse("");
-
-
-                            throw new PasswordValidationException(errMsg);
-                        } else {
-                            String hashedPassword = passwordService.hashPassword(updateData.getPassword());
-                            userToUpdate.setPassword(hashedPassword);
-                        }
-
-                    }
-                    return userToUpdate;
+                    return checkAndSetPassword(userToUpdate);
                 })
-                .thenApply(userToUpdate -> {
-
-                    // Check and make sure that there isn't another user with the same email
-                    // as the user we are about to update if the update data contains an email
-                    if (StringUtils.isNotEmpty(updateData.getEmail())) {
-
-                        return this
-                                .findAllByEmailIgnoreCase(updateData.getEmail())
-                                .thenApply(usersWithSameEmail -> {
-
-                                    if (usersWithSameEmail.size() >= 1) {
-
-                                        // Filter out users with the same email as the one we are about to update
-                                        usersWithSameEmail.stream()
-                                                .filter(user -> user.getId() != ((User) userToUpdate).getId())
-                                                .forEach(user -> {
-                                                    String msg = String.format("user with email %s ", updateData.getEmail());
-                                                    throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
-                                                });
-                                        //  String msg = String.format("user with email %s ", updateData.getEmail());
-                                        //  throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
-                                    }
-                                    return userToUpdate;
-                                });
-                    }
-                    return userToUpdate;
-                })
+                .handle((user, exception) -> CommonUtils.processHandle(user, exception))
+                .thenCompose(userToUpdate -> checkEmailAvailability(updateData.getEmail(), userToUpdate))
                 .handle((result, ex) -> CommonUtils.processHandle(result, ex))
                 .thenCompose(userToUpdate -> {
                     nullSkippingMapper.map(updateData, userToUpdate);
-                    return this.saveOrUpdate((User) userToUpdate);
+                    return this.saveOrUpdate(userToUpdate);
                 });
     }
 
@@ -225,4 +156,63 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         userDto.setUsername(username.trim().toLowerCase());
         return userDto;
     }
+
+    private CompletableFuture<User> checkEmailAvailability (String email, User userToUpdate) {
+
+            // Check and make sure that there isn't another user with the same email
+            // as the user we are about to update if the update data contains an email
+            if (StringUtils.isNotEmpty(email)) {
+
+                return this
+                        .findAllByEmailIgnoreCase(email)
+                        .thenApply(usersWithSameEmail -> {
+
+                            if (usersWithSameEmail.size() >= 1) {
+
+                                // Filter out users with the same email as the one we are about to update
+                                usersWithSameEmail.stream()
+                                        .filter(user -> user.getId() != ((User) userToUpdate).getId())
+                                        .forEach(user -> {
+                                            String msg = String.format("user with email %s ", email);
+                                            throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
+                                        });
+                                //  String msg = String.format("user with email %s ", updateData.getEmail());
+                                //  throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
+                            }
+                            return userToUpdate;
+                        });
+            }
+            return CompletableFuture.completedFuture(userToUpdate);
+        }
+
+
+        private User checkAndSetPassword(User user) {
+
+            if (user == null) {
+                throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
+            }
+
+            //If we are doing a password update
+            if (!StringUtils.isEmpty(user.getPassword())) {
+
+                RuleResult passwordValidationResult = passwordService.checkPasswordValidity(user.getPassword());
+
+                if (passwordValidationResult != null && !passwordValidationResult.isValid()) {
+                    String errMsg = passwordService
+                            .getPasswordValidator()
+                            .getMessages(passwordValidationResult)
+                            .stream()
+                            .reduce((s, s2) -> s + "\n" + s2).orElse("");
+
+
+                    throw new PasswordValidationException(errMsg);
+                } else {
+                    String hashedPassword = passwordService.hashPassword(user.getPassword());
+                    user.setPassword(hashedPassword);
+                }
+
+            }
+
+            return user;
+        }
 }
