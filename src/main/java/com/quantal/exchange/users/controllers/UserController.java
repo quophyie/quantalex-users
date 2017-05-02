@@ -1,9 +1,10 @@
 package com.quantal.exchange.users.controllers;
 
-import com.fasterxml.jackson.annotation.JsonView;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.jsonviews.UserViews;
+import com.quantal.shared.controller.BaseControllerAsync;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,30 +18,38 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/users")
-public class UserController {
+public class UserController extends BaseControllerAsync {
 
   private UserManagementFacade userManagementFacade;
 
+  private ObjectMapper objectMapper;
+
   @Autowired
-  public UserController(UserManagementFacade userManagementFacade) {
+  public UserController(UserManagementFacade userManagementFacade,
+                        ObjectMapper objectMapper) {
     this.userManagementFacade = userManagementFacade;
+    this.objectMapper = objectMapper;
   }
 
-  @JsonView(UserViews.CreatedUserView.class)
   @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
   public CompletableFuture<ResponseEntity> createUser(@RequestBody UserDto userDto){
-    return userManagementFacade.save(userDto);
+    return userManagementFacade
+            .save(userDto)
+            .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
   }
 
-  @JsonView(UserViews.CreatedUserView.class)
   @PutMapping(value="/{userId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public CompletableFuture<ResponseEntity> updateeUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
-    return userManagementFacade.updateUser(userId, userDto);
+  public CompletableFuture<ResponseEntity> updateUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
+    return userManagementFacade
+            .updateUser(userId, userDto)
+            .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
   }
 
   @GetMapping(value="/{userId}")
   public CompletableFuture<ResponseEntity> findUserbyId(@PathVariable Long userId){
-    return userManagementFacade.findUserById(userId);
+    return userManagementFacade
+            .findUserById(userId)
+            .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
   }
 
   @DeleteMapping(value="/{userId}")

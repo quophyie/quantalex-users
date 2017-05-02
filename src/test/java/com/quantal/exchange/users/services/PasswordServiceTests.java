@@ -172,4 +172,11 @@ public class PasswordServiceTests {
         List<String> messages = passwordValidator.getMessages(result);
         assertThat(messages.get(0)).isEqualToIgnoringCase("Password cannot contain whitespace characters.");
     }
+
+    @Test
+    public void shouldReturnTrueGivenAValidPassword(){
+
+        RuleResult result = passwordService.checkPasswordValidity("Password1@");
+        assertThat(result.isValid()).isTrue();
+    }
 }

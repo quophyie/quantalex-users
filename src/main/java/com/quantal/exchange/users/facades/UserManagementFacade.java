@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.shared.dto.ResponseDto;
 import com.quantal.shared.facades.AbstractBaseFacade;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
@@ -12,6 +13,7 @@ import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
+import com.quantal.shared.util.CommonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,7 +72,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
       }
           User userUpdateModel = toModel(userUpdateDto, new User(), false);
           userUpdateModel.setId(userId);
-          return userService.updateUser(userUpdateModel)
+           return userService.updateUser(userUpdateModel)
                   .thenApply(updated -> {
                       UserDto updatedDto = toDto(updated, UserDto.class);
                       return toRESTResponse(updatedDto, messageService.getMessage(MessageCodes.ENTITY_UPDATED, new String[]{User.class.getSimpleName()}), HttpStatus.OK);
@@ -78,10 +80,13 @@ public class UserManagementFacade extends AbstractBaseFacade {
                   .exceptionally( ex -> {
                       ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR, new String[]{User.class.getSimpleName()}), HttpStatus.INTERNAL_SERVER_ERROR);
 
-                      if (((Throwable)ex).getCause() instanceof AlreadyExistsException) {
+                      Exception businessEx = CommonUtils.extractBusinessException((Throwable) ex);
+                      if (businessEx instanceof AlreadyExistsException) {
                           responseEntity = toRESTResponse(null, ((Throwable)ex).getCause().getMessage(), HttpStatus.CONFLICT);
-                      } else if (((Throwable)ex).getCause() instanceof NotFoundException) {
+                      } else if (businessEx instanceof NotFoundException) {
                           responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
+                      }  else if (businessEx instanceof PasswordValidationException) {
+                          responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.BAD_REQUEST);
                       }
 
                       return responseEntity;

@@ -71,7 +71,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                         throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                     }
 
-                    checkAndSetPassword(user);
+                    checkAndSetPassword(user.getPassword(),user);
                     ApiGatewayUserRequestDto gatewayUserDto = this.createApiGatewayUserDto(null, user.getEmail());
                     return apiGatewayService.addUer(gatewayUserDto)
                             .thenCompose(result -> this.saveOrUpdate(user));
@@ -138,7 +138,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                     if (userToUpdate == null) {
                         throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
                     }
-                    return checkAndSetPassword(userToUpdate);
+                    return checkAndSetPassword(updateData.getPassword(), updateData);
                 })
                 .handle((user, exception) -> CommonUtils.processHandle(user, exception))
                 .thenCompose(userToUpdate -> checkEmailAvailability(updateData.getEmail(), userToUpdate))
@@ -184,16 +184,16 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         }
 
 
-        private User checkAndSetPassword(User user) {
+        private User checkAndSetPassword(String password, User user) {
 
             if (user == null) {
                 throw new NotFoundException(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
             }
 
             //If we are doing a password update
-            if (!StringUtils.isEmpty(user.getPassword())) {
+            if (!StringUtils.isEmpty(password)) {
 
-                RuleResult passwordValidationResult = passwordService.checkPasswordValidity(user.getPassword());
+                RuleResult passwordValidationResult = passwordService.checkPasswordValidity(password);
 
                 if (passwordValidationResult != null && !passwordValidationResult.isValid()) {
                     String errMsg = passwordService
@@ -205,7 +205,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
                     throw new PasswordValidationException(errMsg);
                 } else {
-                    String hashedPassword = passwordService.hashPassword(user.getPassword());
+                    String hashedPassword = passwordService.hashPassword(password);
                     user.setPassword(hashedPassword);
                 }
             }

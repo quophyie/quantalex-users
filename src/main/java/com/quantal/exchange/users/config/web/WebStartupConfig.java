@@ -1,6 +1,9 @@
 package com.quantal.exchange.users.config.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.quantal.shared.convertors.LocalDateConverter;
 import com.quantal.shared.convertors.LocalDateTimeConverter;
@@ -10,7 +13,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.format.FormatterRegistry;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -18,6 +24,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 import org.springframework.web.servlet.i18n.CookieLocaleResolver;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 
@@ -42,19 +50,24 @@ public class WebStartupConfig extends WebMvcConfigurerAdapter {
   public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
     //log.info("Configuring http message converters...");
     MappingJackson2HttpMessageConverter jacksonConverter = new MappingJackson2HttpMessageConverter();
+    //jacksonConverter.setObjectMapper(objectMapper);
     List<MediaType> types = new ArrayList<>(1);
+    jacksonConverter.getObjectMapper().configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     types.add(MediaType.APPLICATION_JSON);
 
     jacksonConverter.setSupportedMediaTypes(types);
     //jacksonConverter.setObjectMapper(objectMapper);
     converters.add(jacksonConverter);
-  } */
+  }*/
 
   @Bean
   @Primary
   public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
     ObjectMapper objectMapper = builder.createXmlMapper(false).build();
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+    objectMapper.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false);
+    objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    //MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
 //        objectMapper.configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false);
     return objectMapper;
   }

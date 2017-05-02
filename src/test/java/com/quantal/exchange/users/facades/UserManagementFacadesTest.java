@@ -2,6 +2,7 @@ package com.quantal.exchange.users.facades;
 
 
 import com.quantal.exchange.users.constants.MessageCodes;
+import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.dto.ResponseDto;
 import com.quantal.shared.services.interfaces.MessageService;
@@ -542,16 +543,14 @@ public class UserManagementFacadesTest {
         UserDto userDto = null;
         String[] replacements = new String[]{User.class.getSimpleName()};
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements )).willReturn(errMsg);
-       userManagementFacade.updateUser(2L, userDto)
-               .thenAccept(responseEntity -> {
-                   HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-                   assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
-                   String message = TestUtil.getResponseDtoMessage(responseEntity);
-                   assertThat(errMsg).isEqualToIgnoringCase(message);
+        ResponseEntity responseEntity = userManagementFacade.updateUser(2L, userDto).get();
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
 
-                   verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements );
+        verify(messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED,replacements );
 
-               });
 
     }
 
@@ -591,20 +590,60 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, null);
 
-        userManagementFacade.updateUser(id, userDto)
-                .thenAccept(responseEntity -> {
-                    HttpStatus httpStatusCode  = responseEntity.getStatusCode();
-                    assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
-                    String message = TestUtil.getResponseDtoMessage(responseEntity);
-                    assertThat("user not found").isEqualToIgnoringCase(message);
-                    verify(userService, times(1)).updateUser(userUpdateData);
+        ResponseEntity responseEntity = userManagementFacade.updateUser(id, userDto).get();
 
-                });
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.NOT_FOUND);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat("user not found").isEqualToIgnoringCase(message);
+        verify(userService, times(1)).updateUser(userUpdateData);
 
 
     }
 
+    @Test
+    public void should400BadRequestGivenInvalidPassword() throws Exception {
 
+        String persistedModelPassword = "pass";
+
+        Long id = 100L;
+
+        String errMsg = "Password must be at least 6 characters in length.";
+        String[] replacements = new String[]{User.class.getSimpleName()};
+
+        User userUpdateData = UserTestUtil.createUserModel(id,
+                null,
+                null,
+                null,
+                persistedModelPassword,
+                null, null);
+
+        given(this.userService
+                .updateUser(userUpdateData))
+                .willAnswer( invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
+                    future.completeExceptionally(new PasswordValidationException(errMsg));
+                    return future;
+                });
+
+        UserDto userDto = UserTestUtil.createApiGatewayUserDto(id,
+                null,
+                null,
+                null,
+                persistedModelPassword,
+                null, null);
+
+
+        ResponseEntity responseEntity = userManagementFacade.updateUser(id, userDto).get();
+
+        HttpStatus httpStatusCode  = responseEntity.getStatusCode();
+        assertThat(httpStatusCode).isEqualTo(HttpStatus.BAD_REQUEST);
+        String message = TestUtil.getResponseDtoMessage(responseEntity);
+        assertThat(errMsg).isEqualToIgnoringCase(message);
+        verify(userService, times(1)).updateUser(userUpdateData);
+
+
+    }
 
 
 }

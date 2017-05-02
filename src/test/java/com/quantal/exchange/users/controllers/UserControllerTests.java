@@ -69,10 +69,12 @@ public class UserControllerTests {
     private UserManagementFacade userManagementFacade;
 
 
+
+
     @Before
     public void setUp() {
 
-        userController = new UserController(userManagementFacade);
+        userController = new UserController(userManagementFacade, null);
     }
 
     @Test
