@@ -18,6 +18,7 @@ public class UserDto {
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private String email;
   private String password;
+
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private String firstName;
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
@@ -37,5 +38,12 @@ public class UserDto {
   private Gender gender;
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private UserStatus status;
+
+  private String apiUserId;
+
+  @JsonView(UserViews.CreatedAndUpdatedUserView.class)
+  private String token;
+
+
 
 }

@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.config.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import okhttp3.OkHttpClient;
@@ -79,26 +80,26 @@ public class ApiConfig
                 .build();
     }
     @Bean
-    public GiphyApiService giphyApiService(OkHttpClient client) {
-        Retrofit retrofit = createRetrofit("http://testurl", client);
+    public GiphyApiService giphyApiService(OkHttpClient client, ObjectMapper objectMapper) {
+        Retrofit retrofit = createRetrofit("http://testurl", client, objectMapper);
         GiphyApiService service = retrofit.create(GiphyApiService.class);
         return service;
     }
 
     @Bean
-    public ApiGatewayService apiGatewayService(OkHttpClient client) {
+    public ApiGatewayService apiGatewayService(OkHttpClient client, ObjectMapper objectMapper) {
         String apiGatewayBaseUrl = env.getProperty("api.gateway.base-url");
-        Retrofit retrofit = createRetrofit(apiGatewayBaseUrl, client);
+        Retrofit retrofit = createRetrofit(apiGatewayBaseUrl, client, objectMapper);
         ApiGatewayService service = retrofit.create(ApiGatewayService.class);
         return service;
     }
 
-    private Retrofit createRetrofit(String baseUrl, OkHttpClient client) {
+    private Retrofit createRetrofit(String baseUrl, OkHttpClient client, ObjectMapper objectMapper) {
         return new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 //.addConverterFactory(ScalarsConverterFactory.create())
                 //.addConverterFactory(new StringConverterFactory())
-                .addConverterFactory(JacksonConverterFactory.create())
+                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
                 //.addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(Java8CallAdapterFactory.create())
                 .client(client)

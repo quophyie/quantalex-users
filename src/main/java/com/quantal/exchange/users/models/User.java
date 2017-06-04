@@ -39,4 +39,5 @@ public class User implements Serializable{
   private LocalDate deactivatedDate;
   private Long companyId;
   private UserStatus status;
+  private String apiUserId;
 }

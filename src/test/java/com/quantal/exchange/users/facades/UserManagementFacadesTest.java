@@ -2,6 +2,7 @@ package com.quantal.exchange.users.facades;
 
 
 import com.quantal.exchange.users.constants.MessageCodes;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.dto.ResponseDto;
@@ -113,9 +114,21 @@ public class UserManagementFacadesTest {
                 persistedModelPassword,
                 Gender.M, persistedModelDob);
 
+        ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
+        jwtUserCredentialResponseDto.setKey("TestKey");
+
         given(this.userService
                 .createUser(eq(userModelFromDto)))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(createdModel));
+
+
+        given(this.userService
+                .requestApiGatewayUserCredentials(persistedModelEmail))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(jwtUserCredentialResponseDto));
+
+        given(this.userService
+                .createJwt(jwtUserCredentialResponseDto.getKey()))
+                .willReturn("token");
 
         given(this.messageService.getMessage(MessageCodes.ENTITY_CREATED, replacements))
                 .willReturn(successMsg);
@@ -136,9 +149,12 @@ public class UserManagementFacadesTest {
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
         assertThat(result.getDob()).isEqualTo(persistedModelDob);
         assertThat(result.getGender()).isEqualTo(Gender.M);
+        assertThat(result.getToken()).isEqualTo("token");
 
         verify(userService, times(1)).createUser(userModelFromDto);
         verify(this.messageService).getMessage(MessageCodes.ENTITY_CREATED, replacements);
+        verify(this.userService).createJwt(jwtUserCredentialResponseDto.getKey());
+        verify(this.userService).requestApiGatewayUserCredentials(persistedModelEmail);
     }
 
     @Test

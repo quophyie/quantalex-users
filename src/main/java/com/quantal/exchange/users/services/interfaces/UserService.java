@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.services.interfaces;
 
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.models.User;
 import com.quantal.shared.services.interfaces.RepositoryService;
 import com.quantal.shared.services.interfaces.RepositoryServiceAsync;
@@ -20,4 +21,6 @@ public interface UserService extends RepositoryServiceAsync<User, Long> {
   CompletableFuture  updateUser(User updateData) ;
   CompletableFuture<Long> countByEmailIgnoreCase(String email);
   CompletableFuture<List<User>> findAllByEmailIgnoreCase(String email);
+  CompletableFuture<ApiJwtUserCredentialResponseDto> requestApiGatewayUserCredentials(String username);
+  String createJwt(String issuer);
 }

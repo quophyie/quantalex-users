@@ -11,6 +11,12 @@ Refactor the base package name (i.e. **`com.quantal.quantalmicroservicetemplate`
 ## Environment Variables
  - **`PASSWORD_SALT`** - The salt that is used to hash passwords. 
  This is a required env variables 
+ 
+ - **`JWT_SECRET`** - The JWT secret that is used to sign JWTs 
+ 
+ - **`JWT_TYPE`** - The JWT type that is set in the JWT header - default should be **`JWT`** 
+ 
+ - **`JWT_ALGORITHM`** - The JWT header that is set in the JWT header - default should be **`HS256`**
 
 ## application.properties  (located at src/main/java/resource)
   

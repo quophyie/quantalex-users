@@ -14,6 +14,8 @@ import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.util.CommonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final UserService userService;
   private final GiphyApiService giphyApiService;
   private final MessageService messageService;
+  private final Logger logger = LoggerFactory.getLogger(UserManagementFacade.class);
 
   @Autowired
   public UserManagementFacade(UserService userService,
@@ -43,22 +46,53 @@ public class UserManagementFacade extends AbstractBaseFacade {
     this.messageService = messageService;
   }
 
+  private UserDto createUserDto(User user,UserDto userDto){
+       userDto = toDto(user, UserDto.class);
+       return  userDto;
+  }
+
   public CompletableFuture<ResponseEntity> save(UserDto userDto){
-        User userToCreate = toModel(userDto, User.class);
-        return userService
+      User userToCreate = toModel(userDto, User.class);
+      UserDto createdDto = new UserDto();
+      logger.debug("creating user: user ", userDto);
+       return userService
                 .createUser(userToCreate)
                 .thenApply(created -> {
-                    UserDto createdDto = toDto(created, UserDto.class);
-                    ResponseEntity responseEntity =toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
-                    return responseEntity;
+                    //createUserDto(created, createdDto);
+                    nullSkippingMapper.map(created, createdDto);
+                    //createdDto = toDto(created, UserDto.class);
+                   // ResponseEntity responseEntity =toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                   // return responseEntity;
+                    logger.debug("created user: user ", userDto);
+                    return createdDto;
                 })
-                .exceptionally( ex -> {
-                    ResponseEntity responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR, new String[]{User.class.getSimpleName()}), HttpStatus.INTERNAL_SERVER_ERROR);
-                   if (ex.getCause() instanceof AlreadyExistsException){
-                       responseEntity =  toRESTResponse(null, ex.getCause().getMessage(), HttpStatus.CONFLICT);
-                    } else if (ex.getCause() instanceof NullPointerException){
-                       responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED, new String[]{User.class.getSimpleName()}), HttpStatus.BAD_REQUEST);
-                    }
+              .thenApply(user -> userService.requestApiGatewayUserCredentials(user.getEmail()))
+              .thenCompose(res -> res)
+              .thenApply(credential -> userService.createJwt(credential.getKey()))
+              .thenApply(token -> {
+                  createdDto.setToken(token);
+                  ResponseEntity responseEntity = toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                  return responseEntity;
+              })
+              .exceptionally( ex -> {
+                    ResponseEntity responseEntity =  toRESTResponse(null,
+                            messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR,
+                                    new String[]{User.class.getSimpleName()}),
+                            HttpStatus.INTERNAL_SERVER_ERROR);
+                    Exception businessEx = CommonUtils.extractBusinessException(ex);
+                   if (businessEx instanceof AlreadyExistsException){
+                       responseEntity =  toRESTResponse(null, businessEx.getMessage(), HttpStatus.CONFLICT);
+                    } else if (businessEx instanceof NullPointerException){
+                       responseEntity =  toRESTResponse(null,
+                               messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,
+                                       new String[]{User.class.getSimpleName()}),
+                               HttpStatus.BAD_REQUEST);
+                    }  else if (businessEx instanceof PasswordValidationException) {
+                       responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.BAD_REQUEST);
+                   }
+
+                   logger.debug("Error creating user:", ex);
+
                     return responseEntity;
                 });
 

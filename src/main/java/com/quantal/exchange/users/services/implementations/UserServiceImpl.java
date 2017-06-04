@@ -1,6 +1,10 @@
 package com.quantal.exchange.users.services.implementations;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
+import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
@@ -15,15 +19,22 @@ import com.quantal.shared.services.implementations.AbstractRepositoryServiceAsyn
 import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.util.CommonUtils;
+import io.jsonwebtoken.JwsHeader;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.passay.RuleResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -32,12 +43,24 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> implements UserService {
 
+    private final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
+
     private UserRepository userRepository;
     private MessageService messageService;
     private NullSkippingOrikaBeanMapper nullSkippingMapper;
     private ApiGatewayService apiGatewayService;
     //private OrikaBeanMapper orikaBeanMapper;
     private PasswordService passwordService;
+
+    @Value("#{environment.JWT_SECRET}")
+    private String JWT_SECRET;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Value("#{environment.JWT_ALGORITHM}") String JWT_ALGORITHM;
+
+    @Value("#{environment.JWT_TYPE}") String JWT_TYPE;
 
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
@@ -62,6 +85,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
         }
 
+        ApiGatewayUserResponseDto gatewayUserResponse = new ApiGatewayUserResponseDto();
         user.setEmail(user.getEmail().toLowerCase());
         return this.findOneByEmail(user.getEmail())
                 .thenCompose(existingUser -> {
@@ -73,8 +97,13 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
                     checkAndSetPassword(user.getPassword(),user);
                     ApiGatewayUserRequestDto gatewayUserDto = this.createApiGatewayUserDto(null, user.getEmail());
+
                     return apiGatewayService.addUer(gatewayUserDto)
-                            .thenCompose(result -> this.saveOrUpdate(user));
+                            .thenCompose(gwayUserResponse -> {
+                                nullSkippingMapper.map(gwayUserResponse, gatewayUserResponse);
+                                user.setApiUserId(gwayUserResponse.getId());
+                               return this.saveOrUpdate(user);
+                            });
                 });
 
     }
@@ -144,7 +173,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                 .thenCompose(userToUpdate -> checkEmailAvailability(updateData.getEmail(), userToUpdate))
                 .handle((result, ex) -> CommonUtils.processHandle(result, ex))
                 .thenCompose(userToUpdate -> {
-                    nullSkippingMapper.map(updateData, userToUpdate);
+                     nullSkippingMapper.map(updateData, userToUpdate);
                     return this.saveOrUpdate(userToUpdate);
                 });
     }
@@ -152,6 +181,13 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
     private ApiGatewayUserRequestDto createApiGatewayUserDto(Long customId, String username) {
         ApiGatewayUserRequestDto userDto = new ApiGatewayUserRequestDto();
         userDto.setUsername(username.trim().toLowerCase());
+        return userDto;
+    }
+
+    private ApiJwtUserCredentialRequestDto createApiJwtUserCredentialRequestDto() {
+        ApiJwtUserCredentialRequestDto userDto = new ApiJwtUserCredentialRequestDto();
+        userDto.setAlgorithm(JWT_ALGORITHM);
+        userDto.setSecret(JWT_SECRET);
         return userDto;
     }
 
@@ -210,5 +246,25 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                 }
             }
             return user;
+        }
+
+        public CompletableFuture<ApiJwtUserCredentialResponseDto> requestApiGatewayUserCredentials(String username){
+            ApiJwtUserCredentialRequestDto requestDto = createApiJwtUserCredentialRequestDto();
+            return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
+        }
+
+        public String createJwt(String issuer){
+
+            JwsHeader header = Jwts.jwsHeader();
+            header.setAlgorithm(JWT_ALGORITHM);
+            header.setType(JWT_TYPE);
+
+            String compactJws = Jwts.builder()
+                    .setHeader((Map<String, Object>) header)
+                    .setIssuer(issuer)
+                    .claim("type", "user")
+                    .signWith(SignatureAlgorithm.HS256, JWT_SECRET)
+                    .compact();
+            return compactJws;
         }
 }
