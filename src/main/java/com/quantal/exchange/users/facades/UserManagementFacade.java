@@ -32,7 +32,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final UserService userService;
   private final GiphyApiService giphyApiService;
   private final MessageService messageService;
-  private final Logger logger = LoggerFactory.getLogger(UserManagementFacade.class);
+  private final Logger logger = LoggerFactory.getLogger(getClass());
 
   @Autowired
   public UserManagementFacade(UserService userService,

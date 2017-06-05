@@ -17,6 +17,10 @@ Refactor the base package name (i.e. **`com.quantal.quantalmicroservicetemplate`
  - **`JWT_TYPE`** - The JWT type that is set in the JWT header - default should be **`JWT`** 
  
  - **`JWT_ALGORITHM`** - The JWT header that is set in the JWT header - default should be **`HS256`**
+ 
+ - **`API_GATEWAY_ENDPOINT`** - The base url of the api gateway - default should be **`http://localhost:8001`**
+ 
+ 
 
 ## application.properties  (located at src/main/java/resource)
   

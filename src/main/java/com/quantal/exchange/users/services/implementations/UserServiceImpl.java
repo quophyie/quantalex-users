@@ -249,12 +249,13 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         }
 
         public CompletableFuture<ApiJwtUserCredentialResponseDto> requestApiGatewayUserCredentials(String username){
-            ApiJwtUserCredentialRequestDto requestDto = createApiJwtUserCredentialRequestDto();
+             ApiJwtUserCredentialRequestDto requestDto = createApiJwtUserCredentialRequestDto();
             return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
         }
 
         public String createJwt(String issuer){
 
+            logger.debug("creating JWT with issuer: ", issuer);
             JwsHeader header = Jwts.jwsHeader();
             header.setAlgorithm(JWT_ALGORITHM);
             header.setType(JWT_TYPE);
@@ -265,6 +266,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                     .claim("type", "user")
                     .signWith(SignatureAlgorithm.HS256, JWT_SECRET)
                     .compact();
+            logger.debug("created JWT: ", compactJws);
             return compactJws;
         }
 }

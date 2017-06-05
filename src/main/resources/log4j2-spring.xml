@@ -20,7 +20,8 @@
             <JsonLayout compact="true" eventEol="true"/>
         </File>
         <File name="Json-File-Appender" fileName="${log-path}/app_log.json" >
-            <JsonLayout compact="true" eventEol="true"/>
+            <!--<JsonLayout compact="true" eventEol="true"/>-->
+            <JSONLayout compact="true" eventEol="true"/>
         </File>
         <File name="SpringBoot-File-Appender" fileName="${log-path}/springboot_log.log" >
             <PatternLayout>

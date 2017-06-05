@@ -19,11 +19,12 @@ services:
       - PASSWORD_SALT=${PASSWORD_SALT}
       - JWT_TYPE=${JWT_TYPE}
       - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}
     links:
       - postgres_quantal_users
     depends_on:
       - postgres_quantal_users
-    command: ["/wait-for-it.sh", "postgres_quantal_users:5432", "--", "java",  "-jar", "/opt/app/quantalex-users-0.0.1-SNAPSHOT.jar", "&&", "/filebeat/filebeat-5.4.0-linux-x86_64/filebeat","-e","-c", "/etc/filebeat/filebeat.yml"]
+    command: ["/wait-for-it.sh", "postgres_quantal_users:5432", "--", "java",  "-jar", "/opt/app/quantalex-users-0.0.1-SNAPSHOT.jar"]
     volumes:
       - /private/var/docker/log/quantalex_users:/var/log
 
