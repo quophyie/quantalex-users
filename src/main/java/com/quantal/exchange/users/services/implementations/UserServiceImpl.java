@@ -32,7 +32,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
+import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -253,20 +255,29 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
         }
 
-        public String createJwt(String issuer){
+        public String createJwt(String issuer) {
 
-            logger.debug("creating JWT with issuer: ", issuer);
-            JwsHeader header = Jwts.jwsHeader();
-            header.setAlgorithm(JWT_ALGORITHM);
-            header.setType(JWT_TYPE);
+            try {
 
-            String compactJws = Jwts.builder()
-                    .setHeader((Map<String, Object>) header)
-                    .setIssuer(issuer)
-                    .claim("type", "user")
-                    .signWith(SignatureAlgorithm.HS256, JWT_SECRET)
-                    .compact();
-            logger.debug("created JWT: ", compactJws);
-            return compactJws;
+                logger.debug("creating JWT with issuer: ", issuer);
+
+                JwsHeader header = Jwts.jwsHeader();
+                header.setAlgorithm(JWT_ALGORITHM);
+                header.setType(JWT_TYPE);
+
+                String keyAsBase64 = Base64.getEncoder().encodeToString(JWT_SECRET.getBytes("utf-8"));
+
+                String compactJws = Jwts.builder()
+                        .setHeader((Map<String, Object>) header)
+                        .setIssuer(issuer)
+                        .claim("type", "user")
+                        .signWith(SignatureAlgorithm.HS256, keyAsBase64)
+                        .compact();
+                logger.debug("created JWT: ", compactJws);
+                return compactJws;
+            } catch (UnsupportedEncodingException uee){
+              logger.debug("Error encoding JWT secret:", uee);
+              throw new RuntimeException(uee.getMessage(), uee.getCause());
+            }
         }
 }
