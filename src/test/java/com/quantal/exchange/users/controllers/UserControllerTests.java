@@ -1,8 +1,5 @@
 package com.quantal.exchange.users.controllers;
 
-import com.quantal.exchange.users.UsersApplication;
-import com.quantal.exchange.users.config.security.WebSecurityConfig;
-import com.quantal.exchange.users.config.web.WebStartupConfig;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.facades.UserManagementFacade;
@@ -14,15 +11,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -53,6 +47,7 @@ public class UserControllerTests {
     private String persistedUserLasttName = "updatedUserLasttName";
     private String persistedUserEmail = "persistedUserEmail@quantal.com";
     private String persistedUserPassword = "persistedUserPassword";
+    private String persistedConfirmedUserPassword = "persistedUserPassword";
     private LocalDate persistedUserDob = LocalDate.of(1980, 1, 1);
     private Gender persistedUserGender = Gender.M;
 
@@ -242,6 +237,7 @@ public class UserControllerTests {
                 persistedUserPassword,
                 persistedUserGender,
                 null);
+        userDto.setConfirmedPassword(persistedConfirmedUserPassword);
 
         UserDto createdUserDto = UserTestUtil.createApiGatewayUserDto(userId,
                 persistedUserFirstName,

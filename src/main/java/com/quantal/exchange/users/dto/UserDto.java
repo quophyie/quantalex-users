@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonView;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.enums.UserStatus;
 import com.quantal.exchange.users.jsonviews.UserViews;
+import com.quantal.exchange.users.validators.password.PasswordMatches;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -12,12 +13,14 @@ import java.time.LocalDate;
  * Created by dman on 08/03/2017.
  */
 @Data
+@PasswordMatches
 public class UserDto {
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private Long id;
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private String email;
   private String password;
+  private String confirmedPassword;
 
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private String firstName;

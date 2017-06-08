@@ -2,14 +2,18 @@ package com.quantal.exchange.users.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.dto.UserDto;
+import com.quantal.exchange.users.enums.PasswordMatchType;
 import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.jsonviews.UserViews;
+import com.quantal.exchange.users.validators.password.PasswordMatches;
 import com.quantal.shared.controller.BaseControllerAsync;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -32,14 +36,20 @@ public class UserController extends BaseControllerAsync {
   }
 
   @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public CompletableFuture<ResponseEntity> createUser(@RequestBody UserDto userDto){
+  public CompletableFuture<ResponseEntity> createUser(@RequestBody
+                                                        @Validated
+                                                      @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
+                                                       UserDto userDto){
     return userManagementFacade
             .save(userDto)
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
   }
 
   @PutMapping(value="/{userId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public CompletableFuture<ResponseEntity> updateUser(@PathVariable("userId") Long userId, @RequestBody UserDto userDto){
+  public CompletableFuture<ResponseEntity> updateUser(@PathVariable("userId") Long userId,
+                                                      @RequestBody
+                                                      @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
+                                                              UserDto userDto){
     return userManagementFacade
             .updateUser(userId, userDto)
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
