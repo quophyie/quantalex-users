@@ -2,8 +2,8 @@ package com.quantal.exchange.users.config.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
-import com.quantal.exchange.users.services.api.AuthorizationService;
-import com.quantal.exchange.users.services.api.EmailService;
+import com.quantal.exchange.users.services.api.AuthorizationApiService;
+import com.quantal.exchange.users.services.api.EmailApiService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -100,18 +100,18 @@ public class ApiConfig
     }
 
     @Bean
-    public AuthorizationService authorizationService(OkHttpClient client, ObjectMapper objectMapper) {
+    public AuthorizationApiService authorizationService(OkHttpClient client, ObjectMapper objectMapper) {
         String authorizationServiceBaseUrl = env.getProperty("authorization.service.endpoint");
         Retrofit retrofit = createRetrofit(authorizationServiceBaseUrl, client, objectMapper);
-        AuthorizationService service = retrofit.create(AuthorizationService.class);
+        AuthorizationApiService service = retrofit.create(AuthorizationApiService.class);
         return service;
     }
 
     @Bean
-    public EmailService emailService(OkHttpClient client, ObjectMapper objectMapper) {
+    public EmailApiService emailService(OkHttpClient client, ObjectMapper objectMapper) {
         String emailServiceBaseUrl = env.getProperty("email.service.endpoint");
         Retrofit retrofit = createRetrofit(emailServiceBaseUrl, client, objectMapper);
-        EmailService service = retrofit.create(EmailService.class);
+        EmailApiService service = retrofit.create(EmailApiService.class);
         return service;
     }
 

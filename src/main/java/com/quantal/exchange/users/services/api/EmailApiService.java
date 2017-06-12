@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Created by root on 12/06/2017.
  */
-public interface EmailService {
+public interface EmailApiService {
     @POST("")
     @Headers({"Content-Type: application/json"})
     CompletableFuture<EmailResponseDto> sendEmail(@Body EmailRequestDto emailRequestDto);

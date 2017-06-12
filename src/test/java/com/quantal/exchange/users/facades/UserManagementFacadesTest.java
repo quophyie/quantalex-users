@@ -7,8 +7,8 @@ import com.quantal.exchange.users.enums.EmailType;
 import com.quantal.exchange.users.enums.TokenType;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
-import com.quantal.exchange.users.services.api.AuthorizationService;
-import com.quantal.exchange.users.services.api.EmailService;
+import com.quantal.exchange.users.services.api.AuthorizationApiService;
+import com.quantal.exchange.users.services.api.EmailApiService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.dto.ResponseDto;
@@ -31,6 +31,7 @@ import org.junit.contrib.java.lang.system.EnvironmentVariables;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
+import org.passay.RuleResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -75,6 +76,7 @@ public class UserManagementFacadesTest {
     private String persistedModelLastName = "createdUserLastName";
     private String persistedModelEmail = "createdUser@quant.com";
     private String persistedModelPassword = "createdUserPassword";
+    private String persistedModelConfirmedPassword = "createdUserPassword";
     private LocalDate persistedModelDob = LocalDate.of(1990, 01, 01);
     private Gender persistedModelGender = Gender.M;
     private Long userId = 1L;
@@ -92,18 +94,19 @@ public class UserManagementFacadesTest {
     private PasswordService passwordService;
 
     @MockBean
-    private AuthorizationService authorizationService;
+    private AuthorizationApiService authorizationApiService;
 
-    @MockBean
+    @Autowired
     @Qualifier("orikaBeanMapper")
     private OrikaBeanMapper orikaBeanMapper;
 
-    @MockBean
+    @Autowired
     @Qualifier("nullSkippingOrikaBeanMapper")
     private NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper;
 
     @MockBean
-    private EmailService emailService;
+    private EmailApiService emailApiService;
+
 
     @Autowired
     @InjectMocks
@@ -111,12 +114,16 @@ public class UserManagementFacadesTest {
 
     @Before
     public void setUp(){
+      //  nullSkippingOrikaBeanMapper = new NullSkippingOrikaBeanMapper();
+      //  orikaBeanMapper = new OrikaBeanMapper();
        userManagementFacade = new UserManagementFacade(userService,
                giphyApiService,
                messageService,
                orikaBeanMapper,
                nullSkippingOrikaBeanMapper,
-               authorizationService, emailService);
+               authorizationApiService,
+               emailApiService,
+               passwordService);
         environmentVariables.set("DB_HOST", "localhost");
 
     }
@@ -757,10 +764,10 @@ public class UserManagementFacadesTest {
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
         given(userService.findOneByEmail(persistedModelEmail))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
-        given(authorizationService.requestToken(authRequestDto))
+        given(authorizationApiService.requestToken(authRequestDto))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
-        given(emailService.sendEmail(emailRequestDto))
+        given(emailApiService.sendEmail(emailRequestDto))
                 .willAnswer(invocationOnMock ->{
                     EmailResponseDto emailResponseDto = new EmailResponseDto();
                     return CompletableFuture.completedFuture(emailResponseDto);
@@ -772,8 +779,164 @@ public class UserManagementFacadesTest {
 
         verify(messageService).getMessage(MessageCodes.SUCCESS);
         verify(userService).findOneByEmail(persistedModelEmail);
-        verify(authorizationService).requestToken(authRequestDto);
-        verify(emailService).sendEmail(emailRequestDto);
+        verify(authorizationApiService).requestToken(authRequestDto);
+        verify(emailApiService).sendEmail(emailRequestDto);
+    }
+
+    @Test
+    public void shouldReturn400BadRequestGivenEmptyEmailOrPasswordOnPasswordReset () throws ExecutionException, InterruptedException {
+
+        String email = "";
+        String errMsg = "email data is null or empty";
+
+        String[] replacements = new String[]{"email or password"};
+
+        UserDto userDto = new UserDto();
+        userDto.setEmail(email);
+        userDto.setPassword(persistedModelPassword);
+        userDto.setConfirmedPassword(persistedModelConfirmedPassword);
+
+
+        given(messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements )).willReturn(errMsg);
+
+        // When
+         ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+         HttpStatus httpStatus = responseEntity.getStatusCode();
+         assertThat(httpStatus).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(messageService).getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements );
+
+    }
+
+    @Test
+    public void shouldReturn400BadRequestGivenInvalidPasswordOnPasswordReset () throws ExecutionException, InterruptedException {
+
+
+        String errMsg = "inavlid email or password";
+
+        UserDto userDto = new UserDto();
+        userDto.setEmail(persistedModelEmail);
+        userDto.setPassword(persistedModelPassword);
+        userDto.setConfirmedPassword(persistedModelConfirmedPassword);
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(false);
+
+
+        given(messageService.getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD)).willReturn(errMsg);
+        given(passwordService.checkPasswordValidity(userDto.getPassword() )).willReturn(ruleResult);
+
+
+        // When
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        HttpStatus httpStatus = responseEntity.getStatusCode();
+        assertThat(httpStatus).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(messageService).getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD);
+        verify(passwordService).checkPasswordValidity(userDto.getPassword());
+
+
+    }
+
+    @Test
+    public void shouldReturn404NotFoundGivenEmailForNonExistentUserOnPasswordReset () throws ExecutionException, InterruptedException {
+
+
+        String errMsg = "user not found";
+
+        UserDto userDto = new UserDto();
+        userDto.setEmail("notfound@quantal.com");
+        userDto.setPassword(persistedModelPassword);
+        userDto.setConfirmedPassword(persistedModelConfirmedPassword);
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(true);
+
+        String[] replacements = new String[]{User.class.getSimpleName()};
+
+        given(messageService.getMessage(MessageCodes.NOT_FOUND, replacements)).willReturn(errMsg);
+        given(userService.findOneByEmail(userDto.getEmail() ))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(null));
+        given(passwordService.checkPasswordValidity(userDto.getPassword() )).willReturn(ruleResult);
+
+        // When
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        HttpStatus httpStatus = responseEntity.getStatusCode();
+        assertThat(httpStatus).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(messageService).getMessage(MessageCodes.NOT_FOUND, replacements);
+        verify(passwordService).checkPasswordValidity(userDto.getPassword());
+        verify(userService).findOneByEmail(userDto.getEmail());
+    }
+
+
+
+
+    @Test
+    public void shouldReturnOkGivenValidEmailOnPasswordReset () throws ExecutionException, InterruptedException {
+
+        String newPassword = "newPassword";
+        UserDto userDto = new UserDto();
+        userDto.setEmail(persistedModelEmail);
+        userDto.setPassword(persistedModelPassword);
+        userDto.setConfirmedPassword(persistedModelConfirmedPassword);
+
+        User user = UserTestUtil.createUserModel(1L,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, null);
+
+        User updatedUser = UserTestUtil.createUserModel(1L,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                newPassword,
+                Gender.M, null);
+
+        String message = "OK";
+        String jwt = "jwt_token";
+
+        AuthRequestDto authRequestDto = new AuthRequestDto();
+        authRequestDto.setTokenType(TokenType.Access);
+        authRequestDto.setEmail(persistedModelEmail);
+
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setToken(jwt);
+
+        RuleResult ruleResult = new RuleResult();
+        ruleResult.setValid(true);
+
+        EmailRequestDto emailRequestDto = new EmailRequestDto();
+        emailRequestDto.setEmail(persistedModelEmail);
+        emailRequestDto.setToken(tokenDto.getToken());
+        emailRequestDto.setEmailType(EmailType.PasswordReset);
+
+
+        // Given
+        given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
+        given(userService.findOneByEmail(persistedModelEmail))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
+        given(authorizationApiService.requestToken(authRequestDto))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
+
+        given(authorizationApiService.deleteAllTokens(user.getId()))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(new AuthResponseDto()));
+
+        given(userService.saveOrUpdate(updatedUser))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(updatedUser));
+
+        given(passwordService.checkPasswordValidity(userDto.getPassword()))
+                .willReturn(ruleResult);
+        // When
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        HttpStatus httpStatus = responseEntity.getStatusCode();
+        assertThat(httpStatus).isEqualTo(HttpStatus.OK);
+
+        verify(messageService).getMessage(MessageCodes.SUCCESS);
+        verify(userService).findOneByEmail(persistedModelEmail);
+        verify(userService).saveOrUpdate(updatedUser);
+        verify(authorizationApiService).requestToken(authRequestDto);
+        verify(authorizationApiService).deleteAllTokens(user.getId());
+        verify(passwordService).checkPasswordValidity(userDto.getPassword());
     }
 
 

@@ -8,7 +8,6 @@ import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
-import com.quantal.exchange.users.services.api.AuthorizationService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
@@ -28,8 +27,6 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.passay.RuleResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -239,12 +236,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
                 if (passwordValidationResult != null && !passwordValidationResult.isValid()) {
                     String errMsg = passwordService
-                            .getPasswordValidator()
-                            .getMessages(passwordValidationResult)
-                            .stream()
-                            .reduce((s, s2) -> s + "\n" + s2).orElse("");
-
-
+                            .getPasswordValidationCheckErrorMessages(passwordValidationResult,"\n");
                     throw new PasswordValidationException(errMsg);
                 } else {
                     String hashedPassword = passwordService.hashPassword(password);

@@ -184,7 +184,7 @@ public class UserServiceTests {
         RuleResult ruleResult = new RuleResult();
         ruleResult.setValid(false);
         given(passwordService.checkPasswordValidity(userToSave.getPassword())).willReturn(ruleResult);
-        given(passwordService.getPasswordValidator()).willReturn(passwordValidator);
+        given(passwordService.getPasswordValidationCheckErrorMessages(ruleResult,"\n")).willReturn("");
 
         try {
             // When
@@ -197,7 +197,7 @@ public class UserServiceTests {
             assertThat(ex.getCause() instanceof PasswordValidationException).isTrue();
 
             verify(passwordService).checkPasswordValidity(userToSave.getPassword());
-            verify(passwordService).getPasswordValidator();
+            verify(passwordService).getPasswordValidationCheckErrorMessages(ruleResult,"\n");
         }
 
     }
@@ -409,7 +409,7 @@ public class UserServiceTests {
         RuleResult ruleResult = new RuleResult();
         ruleResult.setValid(false);
         given(passwordService.checkPasswordValidity(updateData.getPassword())).willReturn(ruleResult);
-        given(passwordService.getPasswordValidator()).willReturn(passwordValidator);
+        given(passwordService.getPasswordValidationCheckErrorMessages(ruleResult, "\n")).willReturn("");
 
         doNothing().when(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
 
@@ -424,7 +424,7 @@ public class UserServiceTests {
             verify(userRepository).findOne(userId);
           //  verify(nullSkippingOrikaBeanMapper).map(updateData, persistedUser);
             verify(passwordService).checkPasswordValidity(updateData.getPassword());
-            verify(passwordService).getPasswordValidator();
+            verify(passwordService).getPasswordValidationCheckErrorMessages(ruleResult, "\n");
         }
 
     }

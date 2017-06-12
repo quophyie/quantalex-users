@@ -39,4 +39,12 @@ public interface PasswordService {
      */
     PasswordValidator getPasswordValidator();
 
+    /**
+     * returns the ruleResult validation errors
+     * @param ruleResult
+     * @param separator
+     * @return
+     */
+    String getPasswordValidationCheckErrorMessages(RuleResult ruleResult, String separator);
+
 }

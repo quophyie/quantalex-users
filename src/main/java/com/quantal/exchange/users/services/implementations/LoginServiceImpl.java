@@ -1,18 +1,16 @@
 package com.quantal.exchange.users.services.implementations;
 
 import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.dto.AuthResponseDto;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
-import com.quantal.exchange.users.services.api.AuthorizationService;
+import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.services.interfaces.MessageService;
-import com.quantal.shared.util.CommonUtils;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureException;
 import org.apache.commons.lang3.StringUtils;
@@ -37,7 +35,7 @@ public class LoginServiceImpl implements LoginService {
     private PasswordService passwordService;
     private MessageService messageService;
     private ApiGatewayService apiGatewayService;
-    private AuthorizationService authorizationService;
+    private AuthorizationApiService authorizationApiService;
 
     private static Logger logger = LogManager.getLogger();
 
@@ -49,12 +47,12 @@ public class LoginServiceImpl implements LoginService {
                             PasswordService passwordService,
                             MessageService messageService,
                             ApiGatewayService apiGatewayService,
-                            AuthorizationService authorizationService) {
+                            AuthorizationApiService authorizationApiService) {
         this.userService = userService;
         this.passwordService = passwordService;
         this.messageService = messageService;
         this.apiGatewayService  = apiGatewayService;
-        this.authorizationService = authorizationService;
+        this.authorizationApiService = authorizationApiService;
     }
 
     @Override
@@ -117,7 +115,7 @@ public class LoginServiceImpl implements LoginService {
             }
 
             logger.debug("Contacting authorization service to delete token with jti {} ...", jti);
-            return authorizationService
+            return authorizationApiService
                     .deleteToken(jti)
                     .thenApply(authResponseDto -> null);
 

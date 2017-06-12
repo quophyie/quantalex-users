@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.controllers;
 
+import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.facades.UserManagementFacade;
@@ -29,6 +30,7 @@ import static net.javacrumbs.jsonunit.spring.JsonUnitResultMatchers.json;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -92,6 +94,8 @@ public class UserControllerTests {
                     .node("data")
                     .matches(hasItem(jsonPartMatches("type", equalTo("gif")))));
 
+        verify(userManagementFacade).getFunnyCat();
+
 
     }
 
@@ -153,6 +157,8 @@ public class UserControllerTests {
                         json()
                                 .node("gender")
                                 .isEqualTo(persistedUserGender));
+
+        verify(userManagementFacade).updateUser(userId,updateData);
     }
 
     @Test
@@ -197,6 +203,8 @@ public class UserControllerTests {
                         json()
                                 .node("gender")
                                 .isEqualTo(persistedUserGender));
+
+        verify(userManagementFacade).findUserById(userId);
     }
 
 
@@ -225,6 +233,7 @@ public class UserControllerTests {
                         json()
                                 .node("message")
                                 .isEqualTo("OK"));
+        verify(userManagementFacade).deleteByUserId(userId);
     }
 
     @Test
@@ -292,6 +301,81 @@ public class UserControllerTests {
                         json()
                                 .node("gender")
                                 .isEqualTo(persistedUserGender));
+
+        verify(userManagementFacade).save(userDto);
+    }
+
+    @Test
+    public void shouldSendPasswordResetEmailGivenUserEmail() throws Exception {
+
+        UserDto userDto = new UserDto();
+        userDto.setEmail("user@quanta.com");
+
+
+        ResponseEntity response = new ResponseEntity(new ResponseMessageDto("OK", 200), HttpStatus.OK);
+
+        given(this.userManagementFacade.requestPasswordReset(userDto.getEmail()))
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture completableFuture = new CompletableFuture();
+                    completableFuture.complete(response);
+                    return completableFuture;
+                });
+
+        MvcResult asyncResult = this.mvc.perform(post("/users/forgotten-password")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(TestUtil.convertObjectToJsonString(userDto)))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(
+                        json()
+                                .isObject())
+                .andExpect(
+                        json()
+                                .node("message")
+                                .isEqualTo("OK"));
+        verify(userManagementFacade).requestPasswordReset(userDto.getEmail());
+    }
+
+
+    @Test
+    public void shouldResetPasswordGivenNewPassword() throws Exception {
+
+        UserDto userDto = new UserDto();
+        userDto.setConfirmedPassword("newPassword");
+        userDto.setPassword("newPassword");
+        userDto.setEmail("user@quanta.com");
+
+        String jwt = "jwt|_token";
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setToken(jwt);
+
+        ResponseEntity response = new ResponseEntity(tokenDto, HttpStatus.OK);
+
+        given(this.userManagementFacade.resetPassword(userDto))
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture completableFuture = new CompletableFuture();
+                    completableFuture.complete(response);
+                    return completableFuture;
+                });
+
+        MvcResult asyncResult = this.mvc.perform(post("/users/reset-password")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(TestUtil.convertObjectToJsonString(userDto)))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(
+                        json()
+                                .isObject())
+                .andExpect(
+                        json()
+                                .node("token")
+                                .isEqualTo(tokenDto.getToken()));
+
+        verify(userManagementFacade).resetPassword(userDto);
     }
 
 

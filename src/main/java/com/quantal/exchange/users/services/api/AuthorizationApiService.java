@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Created by root on 11/06/2017.
  */
-public interface AuthorizationService {
+public interface AuthorizationApiService {
 
     @DELETE("/{jti}")
     @Headers({"Content-Type: application/json"})
@@ -22,5 +22,9 @@ public interface AuthorizationService {
     @POST("/{jti}")
     @Headers({"Content-Type: application/json"})
     CompletableFuture<TokenDto> requestToken(@Body AuthRequestDto authRequestDto);
+
+    @DELETE("/all/{userId}")
+    @Headers({"Content-Type: application/json"})
+    CompletableFuture<AuthResponseDto> deleteAllTokens(Long userId);
 
 }

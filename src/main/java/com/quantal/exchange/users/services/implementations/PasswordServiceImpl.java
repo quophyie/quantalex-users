@@ -78,4 +78,20 @@ public class PasswordServiceImpl implements PasswordService{
     public PasswordValidator getPasswordValidator() {
         return this.validator;
     }
+
+    @Override
+    public String getPasswordValidationCheckErrorMessages(RuleResult ruleResult, String separator){
+        if(ruleResult == null )
+            return "";
+        String delimiter = StringUtils.isEmpty(separator) ? "" : separator;
+
+        String message = this
+                .getPasswordValidator()
+                .getMessages(ruleResult)
+                .stream()
+                .reduce((s, s2) -> s + delimiter + s2).orElse("");
+
+        return message;
+
+    }
 }

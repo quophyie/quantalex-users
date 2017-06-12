@@ -10,7 +10,7 @@ import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
-import com.quantal.exchange.users.services.api.AuthorizationService;
+import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.implementations.LoginServiceImpl;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
@@ -19,7 +19,6 @@ import com.quantal.exchange.users.util.UserTestUtil;
 import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.shared.util.CommonUtils;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -59,7 +58,7 @@ public class LoginServiceTests {
     private ApiGatewayService apiGatewayService;
 
     @Mock
-    private AuthorizationService authorizationService;
+    private AuthorizationApiService authorizationApiService;
 
     private User user;
 
@@ -70,7 +69,7 @@ public class LoginServiceTests {
 
     @Before
     public void setUp() {
-        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationService);
+        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationApiService);
         user = UserTestUtil.createUserModel
                 (1L,
                         "testfirstname",
@@ -250,7 +249,7 @@ public class LoginServiceTests {
         String jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxMjM0NTY3ODkwIn0.A3-qkjWnE3Y_8Hc9TlP_MIe9OWAXCy3TCsx-e1V40gc";
         String jti = "1234567890";
 
-        given(authorizationService.deleteToken(jti))
+        given(authorizationApiService.deleteToken(jti))
                 .willAnswer(invocationOnMock -> {
                     AuthResponseDto authResponseDto = new AuthResponseDto();
                     authResponseDto.setCode(200);
@@ -260,7 +259,7 @@ public class LoginServiceTests {
         Object result = loginService.logout(jwt).get();
         assertThat(result).isNull();
 
-        verify(authorizationService).deleteToken(jti);
+        verify(authorizationApiService).deleteToken(jti);
     }
 
 }

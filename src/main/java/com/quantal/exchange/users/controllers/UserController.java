@@ -67,6 +67,18 @@ public class UserController extends BaseControllerAsync {
     return userManagementFacade.deleteByUserId(userId);
   }
 
+  @PostMapping(value="/forgotten-password")
+  public CompletableFuture<?> forgottenPassword(@RequestBody
+                                                 @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
+                                                          UserDto userDto){
+    return userManagementFacade.requestPasswordReset(userDto.getEmail());
+  }
+
+  @PostMapping(value="/reset-password")
+  public CompletableFuture<?> resetPassword(@RequestBody UserDto userDto){
+    return userManagementFacade.resetPassword(userDto);
+  }
+
   @GetMapping(value="/")
   public CompletableFuture<String> getFunnyCatAsync(){
     return userManagementFacade.getFunnyCat();
