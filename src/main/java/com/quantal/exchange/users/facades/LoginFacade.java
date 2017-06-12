@@ -48,7 +48,7 @@ public class LoginFacade extends AbstractBaseFacade {
 
     public CompletableFuture<ResponseEntity> login(LoginDto loginDto){
         String email = loginDto != null ? loginDto.getEmail() : "";
-        logger.debug(String.format("Logging in user with email: {}", email));
+        logger.debug("Logging in user with email: {}", email);
         if (loginDto == null) {
             String msg = messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED);
             ResponseEntity<?> responseEntity = toRESTResponse(null, msg, HttpStatus.BAD_REQUEST);

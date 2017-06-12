@@ -2,6 +2,7 @@ package com.quantal.exchange.users.services.implementations;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.AuthResponseDto;
+import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
@@ -58,7 +59,7 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     public CompletableFuture<String> login(String email, String password) {
-        logger.debug(String.format("Logging in user with email: {}", email));
+        logger.debug("Logging in user with email: {}", email);
        return userService.findOneByEmail(email)
                 .thenApplyAsync(user -> {
                     if (user == null) {
@@ -75,12 +76,19 @@ public class LoginServiceImpl implements LoginService {
                    logger.debug("Requesting API credentials for {} ... ", email);
                    return apiGatewayService.getConsumerJwtCredentials(user.getEmail());
                })
-               .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
+              // .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
                .thenCompose(apiJwtUserCredentialResponseDto -> {
                    logger.debug("API credentials for {} found ", email);
                    return apiJwtUserCredentialResponseDto;
                })
-               .thenApply(apiJwtUserResponse -> userService.createJwt(apiJwtUserResponse.getKey()));
+               .thenApply(apiJwtUserResponse -> {
+
+                   if (apiJwtUserResponse.getData().isEmpty()) {
+                       String message = messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[] {"api credential key "});
+                       throw logger.throwing(new InvalidDataException(message));
+                   }
+                   return userService.createJwt(apiJwtUserResponse.getData().get(0).getKey());
+               });
 
     }
 

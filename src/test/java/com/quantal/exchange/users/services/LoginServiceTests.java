@@ -2,8 +2,10 @@ package com.quantal.exchange.users.services;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialsListResponseDto;
 import com.quantal.exchange.users.dto.AuthResponseDto;
 import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
@@ -25,6 +27,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -143,8 +146,10 @@ public class LoginServiceTests {
         given(apiGatewayService.getConsumerJwtCredentials(email))
                 .willAnswer(invocationOnMock -> {
                     ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
+                    ApiJwtUserCredentialsListResponseDto jwtUserCredentialListResponseDto = new ApiJwtUserCredentialsListResponseDto();
                     jwtUserCredentialResponseDto.setKey(apiJwtCredentuakKey);
-                    return CompletableFuture.completedFuture(jwtUserCredentialResponseDto);
+                    jwtUserCredentialListResponseDto.setData(Arrays.asList(jwtUserCredentialResponseDto));
+                    return CompletableFuture.completedFuture(jwtUserCredentialListResponseDto);
                 });
         String result = loginService.login(email, password).get();
         assertThat(result).isEqualToIgnoringCase(jwt);
@@ -152,6 +157,37 @@ public class LoginServiceTests {
         verify(userService).findOneByEmail(email);
         verify(userService).createJwt(apiJwtCredentuakKey);
         verify(apiGatewayService).getConsumerJwtCredentials(email);
+
+    }
+
+    @Test
+    public void shouldThrowInvalidDataExceptionGivenEmptyCredentialKey() throws ExecutionException, InterruptedException {
+
+        String apiJwtCredentuakKey = null;
+        given(userService.findOneByEmail(email))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
+
+
+        given(passwordService.checkPassword(password, hashedPassword)).willReturn(true);
+
+        given(apiGatewayService.getConsumerJwtCredentials(email))
+                .willAnswer(invocationOnMock -> {
+                    ApiJwtUserCredentialsListResponseDto jwtUserCredentialListResponseDto = new ApiJwtUserCredentialsListResponseDto();
+                    ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
+                    jwtUserCredentialResponseDto.setKey(apiJwtCredentuakKey);
+                    jwtUserCredentialListResponseDto.setData(Arrays.asList(jwtUserCredentialResponseDto));
+                    return CompletableFuture.completedFuture(jwtUserCredentialListResponseDto);
+                });
+        try {
+            loginService.login(email, password).get();
+        } catch (Exception ex) {
+            RuntimeException busEx = CommonUtils.extractBusinessException(ex);
+            assertThat(busEx).isInstanceOf(InvalidDataException.class);
+            verify(passwordService).checkPassword(password, hashedPassword);
+            verify(userService).findOneByEmail(email);
+            verify(apiGatewayService).getConsumerJwtCredentials(email);
+        }
+
 
     }
 

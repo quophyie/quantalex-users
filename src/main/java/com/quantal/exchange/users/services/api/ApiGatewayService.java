@@ -1,11 +1,9 @@
 package com.quantal.exchange.users.services.api;
 
-import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
-import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
-import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
-import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.dto.*;
 import retrofit2.http.*;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -24,7 +22,7 @@ public interface ApiGatewayService {
 
     @GET("/consumers/{consumer}/jwt")
     @Headers({"Content-Type: application/json"})
-    CompletableFuture<ApiJwtUserCredentialResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId);
+    CompletableFuture<ApiJwtUserCredentialsListResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId);
 
 
     @DELETE("/consumers/{consumer}/jwt/{id}")

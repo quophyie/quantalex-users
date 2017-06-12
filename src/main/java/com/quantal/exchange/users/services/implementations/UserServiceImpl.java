@@ -5,6 +5,7 @@ import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationService;
@@ -25,6 +26,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
 import org.passay.RuleResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +48,7 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> implements UserService {
 
-    private final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
+    private final org.apache.logging.log4j.Logger logger = LogManager.getLogger();
 
     private UserRepository userRepository;
     private MessageService messageService;
@@ -264,6 +266,10 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
      */
     public String createJwt(String issuer) {
 
+        if (StringUtils.isEmpty(issuer)){
+            String message = messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[] {"issuer"});
+            logger.throwing(new InvalidDataException(message));
+        }
             try {
 
                 logger.debug("creating JWT with issuer: {}", issuer);
