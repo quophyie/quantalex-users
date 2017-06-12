@@ -7,6 +7,7 @@ import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
+import com.quantal.exchange.users.services.api.AuthorizationService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
@@ -222,6 +223,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         }
 
 
+
         private User checkAndSetPassword(String password, User user) {
 
             if (user == null) {
@@ -255,11 +257,16 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
         }
 
-        public String createJwt(String issuer) {
+    /**
+     * Creates a JWT
+     * @param issuer - The issuer. If you are using kong, then this will be the JWT Credential's Key
+     * @return
+     */
+    public String createJwt(String issuer) {
 
             try {
 
-                logger.debug("creating JWT with issuer: ", issuer);
+                logger.debug("creating JWT with issuer: {}", issuer);
 
                 JwsHeader header = Jwts.jwsHeader();
                 header.setAlgorithm(JWT_ALGORITHM);
@@ -273,7 +280,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                         .claim("type", "user")
                         .signWith(SignatureAlgorithm.HS256, keyAsBase64)
                         .compact();
-                logger.debug("created JWT: ", compactJws);
+                logger.debug("created JWT: {}", compactJws);
                 return compactJws;
             } catch (UnsupportedEncodingException uee){
               logger.debug("Error encoding JWT secret:", uee);

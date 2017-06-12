@@ -2,6 +2,7 @@ package com.quantal.exchange.users.config.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
+import com.quantal.exchange.users.services.api.AuthorizationService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,10 +43,13 @@ public class ApiConfig
         Logger logger = LoggerFactory.getLogger("LoggingInterceptor");
 
         builder.interceptors().add(chain -> {
+            String requestBody = "";
             Request request = chain.request();
             final Buffer buffer = new Buffer();
-            request.body().writeTo(buffer);
-            String requestBody = buffer.readUtf8();
+            if (request.body() != null) {
+                request.body().writeTo(buffer);
+                requestBody = buffer.readUtf8();
+            }
             long t1 = System.nanoTime();
             logger.info(String.format("Sending request %s on %s%n%s %s",
                     request.url(), chain.connection(), request.headers(), requestBody));
@@ -91,6 +95,14 @@ public class ApiConfig
         String apiGatewayBaseUrl = env.getProperty("api.gateway.base-url");
         Retrofit retrofit = createRetrofit(apiGatewayBaseUrl, client, objectMapper);
         ApiGatewayService service = retrofit.create(ApiGatewayService.class);
+        return service;
+    }
+
+    @Bean
+    public AuthorizationService authorizationService(OkHttpClient client, ObjectMapper objectMapper) {
+        String apiGatewayBaseUrl = env.getProperty("api.gateway.base-url");
+        Retrofit retrofit = createRetrofit(apiGatewayBaseUrl, client, objectMapper);
+        AuthorizationService service = retrofit.create(AuthorizationService.class);
         return service;
     }
 

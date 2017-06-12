@@ -24,7 +24,7 @@ public interface ApiGatewayService {
 
     @GET("/consumers/{consumer}/jwt")
     @Headers({"Content-Type: application/json"})
-    CompletableFuture<ApiJwtUserCredentialResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId, @Body ApiJwtUserCredentialRequestDto requestDto);
+    CompletableFuture<ApiJwtUserCredentialResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId);
 
 
     @DELETE("/consumers/{consumer}/jwt/{id}")

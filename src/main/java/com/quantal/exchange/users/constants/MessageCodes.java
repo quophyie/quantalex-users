@@ -14,4 +14,6 @@ public class MessageCodes {
     public  static final String INTERNAL_SERVER_ERROR = "internal.server.error";
     public  static final String INVALID_PLAIN_TEXT_PASSWORD = "password.invalid.plaintext";
     public  static final String INVALID_PASSWORD_SALT = "password.invalid.salt";
+    public  static final String INVALID_EMAIL_OR_PASSWORD = "invalid.email.or.password";
+    public static final String NULL_OR_EMPTY_DATA = "null.or.empty.data";
 }

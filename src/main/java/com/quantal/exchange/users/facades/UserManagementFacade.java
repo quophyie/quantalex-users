@@ -76,8 +76,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
               })
               .exceptionally( ex -> {
                     ResponseEntity responseEntity =  toRESTResponse(null,
-                            messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR,
-                                    new String[]{User.class.getSimpleName()}),
+                            messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR),
                             HttpStatus.INTERNAL_SERVER_ERROR);
                     Exception businessEx = CommonUtils.extractBusinessException(ex);
                    if (businessEx instanceof AlreadyExistsException){
