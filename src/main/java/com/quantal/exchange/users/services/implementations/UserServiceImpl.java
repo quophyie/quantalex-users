@@ -259,6 +259,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
         }
 
+
     /**
      * Creates a JWT
      * @param issuer - The issuer. If you are using kong, then this will be the JWT Credential's Key

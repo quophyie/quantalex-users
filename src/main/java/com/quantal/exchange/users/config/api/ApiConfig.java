@@ -3,6 +3,7 @@ package com.quantal.exchange.users.config.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationService;
+import com.quantal.exchange.users.services.api.EmailService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -100,9 +101,17 @@ public class ApiConfig
 
     @Bean
     public AuthorizationService authorizationService(OkHttpClient client, ObjectMapper objectMapper) {
-        String apiGatewayBaseUrl = env.getProperty("api.gateway.base-url");
-        Retrofit retrofit = createRetrofit(apiGatewayBaseUrl, client, objectMapper);
+        String authorizationServiceBaseUrl = env.getProperty("authorization.service.endpoint");
+        Retrofit retrofit = createRetrofit(authorizationServiceBaseUrl, client, objectMapper);
         AuthorizationService service = retrofit.create(AuthorizationService.class);
+        return service;
+    }
+
+    @Bean
+    public EmailService emailService(OkHttpClient client, ObjectMapper objectMapper) {
+        String emailServiceBaseUrl = env.getProperty("email.service.endpoint");
+        Retrofit retrofit = createRetrofit(emailServiceBaseUrl, client, objectMapper);
+        EmailService service = retrofit.create(EmailService.class);
         return service;
     }
 

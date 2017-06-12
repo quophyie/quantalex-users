@@ -1,6 +1,12 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.exchange.users.dto.AuthRequestDto;
+import com.quantal.exchange.users.dto.EmailRequestDto;
+import com.quantal.exchange.users.enums.EmailType;
+import com.quantal.exchange.users.enums.TokenType;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
+import com.quantal.exchange.users.services.api.AuthorizationService;
+import com.quantal.exchange.users.services.api.EmailService;
 import com.quantal.shared.dto.ResponseDto;
 import com.quantal.shared.facades.AbstractBaseFacade;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
@@ -14,9 +20,11 @@ import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.util.CommonUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -33,17 +41,25 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final GiphyApiService giphyApiService;
   private final MessageService messageService;
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  private final AuthorizationService authorizationService;
+  private final EmailService emailService;
 
   @Autowired
   public UserManagementFacade(UserService userService,
                               GiphyApiService giphyApiService,
                               MessageService messageService,
-                              OrikaBeanMapper orikaBeanMapper,
-                              NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper) {
+                              @Qualifier("orikaBeanMapper")
+                                      OrikaBeanMapper orikaBeanMapper,
+                              @Qualifier("nullSkippingOrikaBeanMapper")
+                                      NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper,
+                              AuthorizationService authorizationService,
+                              EmailService emailService) {
     super(orikaBeanMapper, nullSkippingOrikaBeanMapper);
     this.userService = userService;
     this.giphyApiService = giphyApiService;
     this.messageService = messageService;
+    this.authorizationService = authorizationService;
+    this.emailService = emailService;
   }
 
   private UserDto createUserDto(User user,UserDto userDto){
@@ -163,6 +179,44 @@ public class UserManagementFacade extends AbstractBaseFacade {
                         }
                         return  responseEntity;
                     });
+    }
+
+    public CompletableFuture<ResponseEntity> requestPasswordReset(String email){
+
+        if (StringUtils.isEmpty(email)) {
+            ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{email}), HttpStatus.BAD_REQUEST);
+            return CompletableFuture.completedFuture(responseEntity);
+        }
+
+        AuthRequestDto authRequestDto = new AuthRequestDto();
+        authRequestDto.setTokenType(TokenType.PasswordReset);
+        authRequestDto.setEmail(email);
+        logger.debug("requesting password reset token for {} ...", email);
+           return userService.findOneByEmail(email)
+                   .thenApply(user -> authorizationService.requestToken(authRequestDto))
+                   .thenCompose(tokenDto -> tokenDto)
+                   .thenCompose(tokenDto -> {
+                       logger.debug("token request success: token:  {} ", tokenDto.getToken());
+                       EmailRequestDto emailRequestDto = new EmailRequestDto();
+                       emailRequestDto.setEmail(email);
+                       emailRequestDto.setToken(tokenDto.getToken());
+                       emailRequestDto.setEmailType(EmailType.PasswordReset);
+
+                       logger.debug("sending password reset email to {}", email);
+                       return emailService.sendEmail(emailRequestDto);
+                   })
+                   .thenApply(emailResponseDto -> {
+                    String message = messageService.getMessage(MessageCodes.SUCCESS);
+                    logger.debug("password reset email sent to {} successfully", email);
+                    ResponseEntity responseEntity = toRESTResponse(null, message);
+                    return responseEntity;
+                   })
+                   .exceptionally( ex -> {
+                       ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR), HttpStatus.INTERNAL_SERVER_ERROR);
+                       logger.debug("Error requesting password reset. ",ex);
+                       return  responseEntity;
+                   });
+
     }
 
   public CompletableFuture<String> getFunnyCat(){

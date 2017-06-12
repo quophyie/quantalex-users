@@ -2,7 +2,7 @@ package com.quantal.exchange.users.facades;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.LoginDto;
-import com.quantal.exchange.users.dto.LoginResponseDto;
+import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.UserService;
@@ -126,10 +126,10 @@ public class LoginFacadeTests {
 
         ResponseEntity responseEntity = loginFacade.login(loginDto).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
-        LoginResponseDto loginResponseDto = TestUtil.getResponseDtoData(responseEntity);
+        TokenDto tokenDto = TestUtil.getResponseDtoData(responseEntity);
 
         assertThat(httpStatus).isEqualTo(HttpStatus.OK);
-        assertThat(loginResponseDto.getToken()).isEqualToIgnoringCase(jwt);
+        assertThat(tokenDto.getToken()).isEqualToIgnoringCase(jwt);
 
         verify(loginService).login(email, password);
 

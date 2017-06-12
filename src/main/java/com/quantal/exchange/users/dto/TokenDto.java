@@ -9,7 +9,7 @@ import lombok.Data;
  */
 
 @Data
-public class LoginResponseDto {
+public class TokenDto {
 
     @JsonView(LoginView.LoginResponse.class)
     private String token;

@@ -2,31 +2,43 @@ package com.quantal.exchange.users.facades;
 
 
 import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.dto.*;
+import com.quantal.exchange.users.enums.EmailType;
+import com.quantal.exchange.users.enums.TokenType;
+import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
+import com.quantal.exchange.users.services.api.AuthorizationService;
+import com.quantal.exchange.users.services.api.EmailService;
+import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.shared.dto.ResponseDto;
+import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
+import com.quantal.shared.objectmapper.OrikaBeanMapper;
 import com.quantal.shared.services.interfaces.MessageService;
+import com.quantal.shared.util.CommonUtils;
 import com.quantal.shared.util.TestUtil;
-import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.EnvironmentVariables;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.LocalDate;
@@ -34,7 +46,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Java6Assertions.assertThat;
-import static org.assertj.core.api.Java6Assertions.in;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -46,11 +57,19 @@ import static org.mockito.Mockito.*;
 //@WebMvcTest(UserManagementFacade.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = {
+        "DB_HOST=localhost",
+        "DB_PORT=5433",
+        "API_GATEWAY_ENDPOINT=http://localhost"
+
+})
 public class UserManagementFacadesTest {
 
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
+    @Rule
+    public final EnvironmentVariables environmentVariables = new EnvironmentVariables();
 
     private String persistedModelFirstName =  "createdUserFirstName";
     private String persistedModelLastName = "createdUserLastName";
@@ -64,11 +83,27 @@ public class UserManagementFacadesTest {
     private UserService userService;
 
     @MockBean
+    private GiphyApiService giphyApiService;
+
+    @MockBean
     private MessageService messageService;
 
     @MockBean
     private PasswordService passwordService;
 
+    @MockBean
+    private AuthorizationService authorizationService;
+
+    @MockBean
+    @Qualifier("orikaBeanMapper")
+    private OrikaBeanMapper orikaBeanMapper;
+
+    @MockBean
+    @Qualifier("nullSkippingOrikaBeanMapper")
+    private NullSkippingOrikaBeanMapper nullSkippingOrikaBeanMapper;
+
+    @MockBean
+    private EmailService emailService;
 
     @Autowired
     @InjectMocks
@@ -76,7 +111,14 @@ public class UserManagementFacadesTest {
 
     @Before
     public void setUp(){
-     //userManagementFacade = new UserManagementFacade(userService, giphyApiService);
+       userManagementFacade = new UserManagementFacade(userService,
+               giphyApiService,
+               messageService,
+               orikaBeanMapper,
+               nullSkippingOrikaBeanMapper,
+               authorizationService, emailService);
+        environmentVariables.set("DB_HOST", "localhost");
+
     }
 
     @Test
@@ -659,6 +701,79 @@ public class UserManagementFacadesTest {
         verify(userService, times(1)).updateUser(userUpdateData);
 
 
+    }
+
+    @Test
+    public void shouldThrowInvalidDataExceptionGivenEmptyEmailOnRequestPasswordReset () throws ExecutionException, InterruptedException {
+
+        String email = "";
+        String errMsg = "email data is null or empty";
+
+        String[] replacements = new String[]{"email"};
+
+        given(messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements )).willReturn(errMsg);
+
+
+        // When
+        try {
+            userManagementFacade.requestPasswordReset(email).get();
+        } catch (Throwable ex) {
+            Throwable businessEx = CommonUtils.extractBusinessException(ex);
+            Assertions.assertThat(businessEx instanceof InvalidDataException).isTrue();
+            verify(messageService).getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements );
+
+        }
+
+
+    }
+
+    @Test
+    public void shouldReturnOkGivenValidEmailOnRequestPasswordReset () throws ExecutionException, InterruptedException {
+
+        User user = UserTestUtil.createUserModel(1L,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, null);
+
+        String message = "OK";
+        String jwt = "jwt_token";
+
+        AuthRequestDto authRequestDto = new AuthRequestDto();
+        authRequestDto.setTokenType(TokenType.PasswordReset);
+        authRequestDto.setEmail(persistedModelEmail);
+
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setToken(jwt);
+
+        EmailRequestDto emailRequestDto = new EmailRequestDto();
+        emailRequestDto.setEmail(persistedModelEmail);
+        emailRequestDto.setToken(tokenDto.getToken());
+        emailRequestDto.setEmailType(EmailType.PasswordReset);
+
+
+        // Given
+        given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
+        given(userService.findOneByEmail(persistedModelEmail))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
+        given(authorizationService.requestToken(authRequestDto))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
+
+        given(emailService.sendEmail(emailRequestDto))
+                .willAnswer(invocationOnMock ->{
+                    EmailResponseDto emailResponseDto = new EmailResponseDto();
+                    return CompletableFuture.completedFuture(emailResponseDto);
+                });
+        // When
+        ResponseEntity responseEntity = userManagementFacade.requestPasswordReset(persistedModelEmail).get();
+        HttpStatus httpStatus = responseEntity.getStatusCode();
+        assertThat(httpStatus).isEqualTo(HttpStatus.OK);
+
+        verify(messageService).getMessage(MessageCodes.SUCCESS);
+        verify(userService).findOneByEmail(persistedModelEmail);
+        verify(authorizationService).requestToken(authRequestDto);
+        verify(emailService).sendEmail(emailRequestDto);
     }
 
 

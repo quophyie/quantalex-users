@@ -2,11 +2,10 @@ package com.quantal.exchange.users.facades;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.LoginDto;
-import com.quantal.exchange.users.dto.LoginResponseDto;
+import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
-import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.facades.AbstractBaseFacade;
 import com.quantal.shared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.shared.objectmapper.OrikaBeanMapper;
@@ -58,10 +57,10 @@ public class LoginFacade extends AbstractBaseFacade {
 
         return loginService.login(loginDto.getEmail(), loginDto.getPassword())
                 .thenApply(token -> {
-                    LoginResponseDto loginResponseDto = new LoginResponseDto();
-                    loginResponseDto.setToken(token);
+                    TokenDto tokenDto = new TokenDto();
+                    tokenDto.setToken(token);
                     logger.debug("login successful. token: {}", token);
-                    ResponseEntity responseEntity = toRESTResponse(loginResponseDto, "");
+                    ResponseEntity responseEntity = toRESTResponse(tokenDto, "");
                     return responseEntity;
                 })
                 .exceptionally(ex -> {

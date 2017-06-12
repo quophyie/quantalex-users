@@ -1,7 +1,7 @@
 package com.quantal.exchange.users.controllers;
 
 import com.quantal.exchange.users.dto.LoginDto;
-import com.quantal.exchange.users.dto.LoginResponseDto;
+import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.facades.LoginFacade;
 import com.quantal.shared.util.TestUtil;
 import org.junit.Before;
@@ -56,9 +56,9 @@ public class LoginControllerTests {
         String jwt = "jwt_token";
 
         given(loginFacade.login(loginDto)).willAnswer(invocationOnMock -> {
-            LoginResponseDto loginResponseDto = new LoginResponseDto();
-            loginResponseDto.setToken(jwt);
-            ResponseEntity<?> responseEntity = new ResponseEntity<>(loginResponseDto,HttpStatus.OK);
+            TokenDto tokenDto = new TokenDto();
+            tokenDto.setToken(jwt);
+            ResponseEntity<?> responseEntity = new ResponseEntity<>(tokenDto,HttpStatus.OK);
             return CompletableFuture.completedFuture(responseEntity);
         });
 

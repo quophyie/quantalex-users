@@ -20,6 +20,9 @@ Refactor the base package name (i.e. **`com.quantal.quantalmicroservicetemplate`
  
  - **`API_GATEWAY_ENDPOINT`** - The base url of the api gateway - default should be **`http://localhost:8001`**
  
+ - **`AUTHORIZATION_SERVICE_ENDPOINT`** - The base end point for the auth microservice - e.g. **`http://localhost:3000`**
+ 
+ - **`EMAIL_SERVICE_ENDPOINT`** - The base end point for the email microservice - e.g. **`http://localhost:3000`**
  
 
 ## application.properties  (located at src/main/java/resource)

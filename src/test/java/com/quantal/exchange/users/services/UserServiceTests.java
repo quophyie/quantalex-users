@@ -2,6 +2,7 @@ package com.quantal.exchange.users.services;
 
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
+import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
@@ -655,6 +656,8 @@ public class UserServiceTests {
 
         verify(userRepository).save(saveData);
     }
+
+
 
     @After
     public void tearDown() {
