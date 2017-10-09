@@ -22,14 +22,17 @@ import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.shared.util.CommonUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.passay.RuleResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import retrofit2.HttpException;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -42,7 +45,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final UserService userService;
   private final GiphyApiService giphyApiService;
   private final MessageService messageService;
-  private final Logger logger = LogManager.getLogger();
+  private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
   private final AuthorizationApiService authorizationApiService;
   private final EmailApiService emailApiService;
   private final PasswordService passwordService;
@@ -76,45 +79,46 @@ public class UserManagementFacade extends AbstractBaseFacade {
       User userToCreate = toModel(userDto, User.class);
       UserDto createdDto = new UserDto();
       logger.debug("creating user: user ", userDto);
+      AuthRequestDto authRequestDto = new AuthRequestDto();
+      authRequestDto.setEmail(userDto.getEmail());
        return userService
                 .createUser(userToCreate)
                 .thenApply(created -> {
-                    //createUserDto(created, createdDto);
                     nullSkippingMapper.map(created, createdDto);
-                    //createdDto = toDto(created, UserDto.class);
-                   // ResponseEntity responseEntity =toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
-                   // return responseEntity;
                     logger.debug("created user: user ", userDto);
                     return createdDto;
                 })
-              .thenApply(user -> userService.requestApiGatewayUserCredentials(user.getEmail()))
+              .thenApply(user -> authorizationApiService.requestUserCredentials(authRequestDto))
               .thenCompose(res -> res)
-              .thenApply(credential -> userService.createJwt(credential.getKey()))
+              .thenApply(credential -> authorizationApiService.requestToken(authRequestDto))
+              .thenCompose(res -> res)
               .thenApply(token -> {
-                  createdDto.setToken(token);
+                  createdDto.setToken(token.getToken());
                   ResponseEntity responseEntity = toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
                   return responseEntity;
-              })
-              .exceptionally( ex -> {
-                    ResponseEntity responseEntity =  toRESTResponse(null,
-                            messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR),
-                            HttpStatus.INTERNAL_SERVER_ERROR);
-                    Exception businessEx = CommonUtils.extractBusinessException(ex);
-                   if (businessEx instanceof AlreadyExistsException){
-                       responseEntity =  toRESTResponse(null, businessEx.getMessage(), HttpStatus.CONFLICT);
-                    } else if (businessEx instanceof NullPointerException){
-                       responseEntity =  toRESTResponse(null,
-                               messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,
-                                       new String[]{User.class.getSimpleName()}),
-                               HttpStatus.BAD_REQUEST);
-                    }  else if (businessEx instanceof PasswordValidationException) {
-                       responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.BAD_REQUEST);
-                   }
-
-                   logger.debug("Error creating user:", ex);
-
-                    return responseEntity;
-                });
+              });
+              /*.exceptionally( ex -> {
+                  ResponseEntity responseEntity = toRESTResponse(null,
+                          messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR),
+                          HttpStatus.INTERNAL_SERVER_ERROR);
+                  Exception businessEx = CommonUtils.extractBusinessException(ex);
+                  if (businessEx instanceof AlreadyExistsException) {
+                      responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.CONFLICT);
+                  } else if (businessEx instanceof NullPointerException) {
+                      responseEntity = toRESTResponse(null,
+                              messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,
+                                      new String[]{User.class.getSimpleName()}),
+                              HttpStatus.BAD_REQUEST);
+                  } else if (businessEx instanceof PasswordValidationException) {
+                      responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.BAD_REQUEST);
+                  } else if (businessEx instanceof HttpException) {
+                      HttpStatus status = HttpStatus.valueOf(((HttpException) businessEx).code());
+                      responseEntity = toRESTResponse(null, businessEx.getMessage(), status);
+                  }
+                  ;
+                  logger.debug("Error creating user:", ex);
+                  return responseEntity;
+              });*/
 
   }
 
@@ -149,7 +153,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
   }
 
-    public CompletableFuture<ResponseEntity> findUserById(Long userId){
+    public CompletableFuture<ResponseEntity> findUserById(Long userId) {
         return userService.findOne(userId)
                 .thenApply(user -> {
                     UserDto userDto = toModel(user, UserDto.class);
@@ -168,21 +172,17 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
 
     public CompletableFuture<?> deleteByUserId(Long userId) {
-
-            return userService.deleteById(userId)
+      logger.info("deleting user identified by {}", userId);
+        CompletableFuture<?> userCompletableFuture = userService.findOne(userId);
+            return userCompletableFuture.thenCombine(userService.deleteById(userId),  (user, deleted) -> user)
+                    .thenApply(user -> {
+                        logger.debug("requesting authorization service to delete {} user credentials", ((User)user).getEmail());
+                        return authorizationApiService.deleteUserCredentials(((User)user).getEmail());
+                    })
                     .thenApply(ret -> {
                         ResponseEntity<?> responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.SUCCESS));
+                        logger.info("user identified by {} deleted successfully", userId);
                         return responseEntity;
-                    })
-                   // .thenCompose(responseEntity -> responseEntity)
-                    .exceptionally(ex -> {
-                        CompletableFuture exFuture = new CompletableFuture();
-                        ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR), HttpStatus.INTERNAL_SERVER_ERROR);
-                        if (ex.getCause() instanceof NotFoundException) {
-                            responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}), HttpStatus.NOT_FOUND);
-                            return responseEntity;
-                        }
-                        return  responseEntity;
                     });
     }
 
@@ -258,7 +258,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .thenCompose(userCompletableFuture -> userCompletableFuture)
                 .thenApply(updateUser -> {
                     logger.debug("deleting all tokens for user {} ", updateUser);
-                    return authorizationApiService.deleteAllTokens(updateUser.getId());
+                    return authorizationApiService.deleteAllTokens(updateUser.getEmail());
                 })
                 .thenApply(authResponseDtoCompletableFuture -> {
                     logger.debug("all tokens deleted for user identified  by {} ", userDto.getEmail());

@@ -5,14 +5,18 @@ import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.api.EmailApiService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import com.quantal.shared.logger.LoggerFactory;
+import okhttp3.*;
 import okio.Buffer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.ext.XLogger;
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.sleuth.SpanNamer;
+import org.springframework.cloud.sleuth.TraceKeys;
+import org.springframework.cloud.sleuth.Tracer;
+import org.springframework.cloud.sleuth.instrument.async.TraceableExecutorService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -22,6 +26,14 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 import retrofit2.converter.scalars.ScalarsConverterFactory;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEADER_KEY;
+
 /**
  * Created by dman on 14/03/2017.
  *
@@ -29,38 +41,88 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
  */
 
 @Configuration
-public class ApiConfig
+public class ApiConfig// implements AsyncConfigurer
 {
 
+    private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
     private Environment env;
+
+
+    @Autowired
+    private BeanFactory beanFactory;
+
+    @Autowired
+    private Tracer tracer;
+    @Autowired
+    private SpanNamer spanNamer;
+    @Autowired
+    private TraceKeys traceKeys;
+
     @Autowired
     public ApiConfig(Environment env){
         this.env = env;
     }
 
+
+    private String getRequestBody(Request request, Buffer buffer ){
+        if (request.body() != null) {
+            try {
+                request.body().writeTo(buffer);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return buffer.readUtf8();
+        }
+        return  null;
+    }
     @Bean
     public OkHttpClient okHttpClient() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();;
-        Logger logger = LoggerFactory.getLogger("LoggingInterceptor");
+        ExecutorService executorService = getAsyncExecutor();
+        Dispatcher dispatcher = new Dispatcher(executorService);
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        builder.dispatcher(dispatcher);
 
+        Map<String, String> previous = MDC.getCopyOfContextMap();
         builder.interceptors().add(chain -> {
-            String requestBody = "";
+            String requestBody = null;
             Request request = chain.request();
+            Request newRequest;
+
             final Buffer buffer = new Buffer();
-            if (request.body() != null) {
+           /* if (request.body() != null) {
                 request.body().writeTo(buffer);
                 requestBody = buffer.readUtf8();
-            }
+            }*/
             long t1 = System.nanoTime();
-            logger.info(String.format("Sending request %s on %s%n%s %s",
-                    request.url(), chain.connection(), request.headers(), requestBody));
+            newRequest = request.newBuilder().addHeader(TRACE_ID_HEADER_KEY, MDC.get("X-B3-TraceId")).build();
+            /*logger.info(String.format("Sending request %s on %s%n%s %s",
+                    newRequest.url(), chain.connection(), newRequest.headers(), requestBody))*/
 
-            Response response = chain.proceed(request);
+            logger.info(String.format("Sending request for %s",newRequest.url()),
+                    new HashMap<String, Object>() {{
+                        put("requestUrl",newRequest.url().url());
+                        put("requestUrlParts",newRequest.url());
+                        put("connection",chain.connection());
+                        put("headers", newRequest.headers());
+                        put("requestBody", getRequestBody(request, buffer));
+                    }},
+                    newRequest.url(), chain.connection(), newRequest.headers(), requestBody);
+
+            Response response = chain.proceed(newRequest);
 
             long t2 = System.nanoTime();
             String responseBody =response.body().string();
-            logger.info(String.format("Received response for %s in %.1fms%n%s %s",
-                    response.request().url(), (t2 - t1) / 1e6d, response.headers(), responseBody));
+            /*logger.info(String.format("Received response for %s in %.1fms%n%s %s%nHttpStatus=%s",
+                    response.request().url(), (t2 - t1) / 1e6d, response.headers(), responseBody, response.code()));*/
+
+            logger.info(String.format("Received response for %s",
+                    response.request().url()),
+                    new HashMap<String, Object>() {{
+                    put("duration", (t2 - t1) / 1e6d);
+                    put("headers", response.headers());
+                    put("responseBody",responseBody);
+                    put("statusCode",response.code());
+                    }});
 
             //return response;
             return response.newBuilder()
@@ -126,4 +188,55 @@ public class ApiConfig
                 .client(client)
                 .build();
     }
+
+   // @Override
+    @Bean("taskExecutor")
+    public ExecutorService getAsyncExecutor() {
+        ExecutorService executorService = Executors.newFixedThreadPool(100);
+        //return new LazyTraceExecutor(beanFactory, threadPoolTaskExecutor);
+        return new TraceableExecutorService(executorService, this.tracer, this.traceKeys, this.spanNamer, "traceable_executor_service");
+        //return taskExecutor();
+    }
+
+    /*@Bean
+    public ExecutorService taskExecutor() {
+        / *ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("async-%d").build();
+        / *MdcThreadPoolExecutor mdcThreadPoolExecutor = MdcThreadPoolExecutor.newWithCurrentMdc(50,
+                100,
+                5000,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>());* /
+        MdcThreadPoolExecutor mdcThreadPoolExecutor = MdcThreadPoolExecutor.newWithCurrentMdcAndThreadFactory(
+                100,threadFactory);
+
+        return mdcThreadPoolExecutor;* /
+        //return CompletableExecutors.completable(mdcThreadPoolExecutor);
+        // return CompletableExecutors.completable(Executors.newFixedThreadPool(10, threadFactory));
+
+        ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+        threadPoolTaskExecutor.setCorePoolSize(50);
+        threadPoolTaskExecutor.setMaxPoolSize(100);
+        threadPoolTaskExecutor.initialize();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(100);
+
+       // return new TraceableExecutorService(taskExecutor(), this.tracer, this.traceKeys, this.spanNamer, "traceable_executor_service");
+       return executorService;
+      //  return getAsyncExecutor();
+
+    }*/
+
+
+
+    // return null;
+    //}
+    //@Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return (ex, method, params) -> logger.error("Uncaught async error", ex);
+    }
+
+   /* @Bean
+    public SpanLogger slf4jSpanLogger() {
+        return new Log4j2SpanLogger("");
+    }*/
 }

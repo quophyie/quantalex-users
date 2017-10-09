@@ -918,7 +918,7 @@ public class UserManagementFacadesTest {
         given(authorizationApiService.requestToken(authRequestDto))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
-        given(authorizationApiService.deleteAllTokens(user.getId()))
+        given(authorizationApiService.deleteAllTokens(user.getEmail()))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(new AuthResponseDto()));
 
         given(userService.saveOrUpdate(updatedUser))
@@ -935,7 +935,7 @@ public class UserManagementFacadesTest {
         verify(userService).findOneByEmail(persistedModelEmail);
         verify(userService).saveOrUpdate(updatedUser);
         verify(authorizationApiService).requestToken(authRequestDto);
-        verify(authorizationApiService).deleteAllTokens(user.getId());
+        verify(authorizationApiService).deleteAllTokens(user.getEmail());
         verify(passwordService).checkPasswordValidity(userDto.getPassword());
     }
 

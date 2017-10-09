@@ -1,13 +1,14 @@
 package com.quantal.exchange.users.controllers;
 
+import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvice;
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.facades.LoginFacade;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.shared.util.TestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -30,7 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(value = LoginController.class, secure = false)
+//@WebMvcTest(value = LoginController.class, secure = false)
+//@SpringBootTest(classes = {UsersApplication.class})
+//@ContextConfiguration(classes = { WebStartupConfig.class })
+//@WebAppConfiguration
 public class LoginControllerTests {
 
     private LoginController loginController;
@@ -38,13 +43,21 @@ public class LoginControllerTests {
     @MockBean
     private LoginFacade loginFacade;
 
-    @Autowired
+   // @Autowired
     private MockMvc mvc;
+
+    @MockBean
+    private MessageService messageService;
 
 
     @Before
     public void setUp() {
+
+
         loginController = new LoginController(loginFacade, null);
+       mvc=  MockMvcBuilders.standaloneSetup(loginController)
+                .setControllerAdvice(new ExceptionHandlerCotrollerAdvice(messageService)).build();
+
     }
 
     @Test

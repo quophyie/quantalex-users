@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.controllers;
 
+import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvice;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
@@ -7,6 +8,7 @@ import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
 import com.quantal.shared.dto.ResponseMessageDto;
+import com.quantal.shared.services.interfaces.MessageService;
 import com.quantal.shared.util.TestUtil;
 import org.junit.After;
 import org.junit.Before;
@@ -21,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +68,8 @@ public class UserControllerTests {
     @MockBean
     private UserManagementFacade userManagementFacade;
 
+    @MockBean
+    private MessageService messageService;
 
 
 
@@ -72,6 +77,8 @@ public class UserControllerTests {
     public void setUp() {
 
         userController = new UserController(userManagementFacade, null);
+        mvc=  MockMvcBuilders.standaloneSetup(userController)
+                .setControllerAdvice(new ExceptionHandlerCotrollerAdvice(messageService)).build();
     }
 
     @Test

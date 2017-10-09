@@ -27,6 +27,8 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.passay.RuleResult;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -38,6 +40,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by dman on 08/03/2017.
@@ -45,7 +48,7 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> implements UserService {
 
-    private final org.apache.logging.log4j.Logger logger = LogManager.getLogger();
+    private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
 
     private UserRepository userRepository;
     private MessageService messageService;
@@ -56,6 +59,9 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
     @Value("#{environment.JWT_SECRET}")
     private String JWT_SECRET;
+
+    @Autowired
+    private ExecutorService taskExecutor;
 
     @Autowired
     private ObjectMapper objectMapper;
