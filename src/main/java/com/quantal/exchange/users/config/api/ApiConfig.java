@@ -1,6 +1,7 @@
 package com.quantal.exchange.users.config.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quantal.exchange.users.aspects.LoggerAspect;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.api.EmailApiService;
@@ -8,6 +9,7 @@ import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.shared.logger.LoggerFactory;
 import okhttp3.*;
 import okio.Buffer;
+import org.aspectj.lang.Aspects;
 import org.slf4j.MDC;
 import org.slf4j.ext.XLogger;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
@@ -19,7 +21,11 @@ import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.cloud.sleuth.instrument.async.TraceableExecutorService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.context.annotation.EnableLoadTimeWeaving;
 import org.springframework.core.env.Environment;
+import org.springframework.instrument.classloading.InstrumentationLoadTimeWeaver;
+import org.springframework.instrument.classloading.LoadTimeWeaver;
 import retrofit2.Retrofit;
 import retrofit2.adapter.java8.Java8CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -40,6 +46,8 @@ import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEAD
  * This class should contain the Retrofit API interfaces
  */
 
+//@EnableAspectJAutoProxy
+@EnableLoadTimeWeaving(aspectjWeaving= EnableLoadTimeWeaving.AspectJWeaving.ENABLED)
 @Configuration
 public class ApiConfig// implements AsyncConfigurer
 {
@@ -233,6 +241,19 @@ public class ApiConfig// implements AsyncConfigurer
     //@Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (ex, method, params) -> logger.error("Uncaught async error", ex);
+    }
+
+
+    /*@Bean
+    public LoadTimeWeaver loadTimeWeaver()  throws Throwable {
+        InstrumentationLoadTimeWeaver loadTimeWeaver = new InstrumentationLoadTimeWeaver();
+        return loadTimeWeaver;
+    }*/
+
+    @Bean
+    public LoggerAspect loggerAspect() {
+        LoggerAspect aspect = Aspects.aspectOf(LoggerAspect.class);
+        return aspect;
     }
 
    /* @Bean

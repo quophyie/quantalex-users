@@ -95,7 +95,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
         ApiGatewayUserResponseDto gatewayUserResponse = new ApiGatewayUserResponseDto();
         user.setEmail(user.getEmail().toLowerCase());
-        return this.findOneByEmail(user.getEmail())
+         return this.findOneByEmail(user.getEmail())
                 .thenCompose(existingUser -> {
 
                     if (existingUser != null) {
