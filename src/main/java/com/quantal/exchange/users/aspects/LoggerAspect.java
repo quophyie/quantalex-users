@@ -54,40 +54,23 @@ public class LoggerAspect  {
     @Pointcut("execution(* com.quantal.shared.logger.QuantalJsonLogger.*(..))")
     public void allLoggerMethods() {}
 
-
-    //@Pointcut("cflow(within(com.quantal.shared.logger.QuantalJsonLogger))")
-    public void withinAllLoggerMethods() {}
-
     @Pointcut("cflow(within(LoggerAspect))")
-  // @Pointcut("within(com.quantal.shared.logger.QuantalJsonLogger)")
-   // @Pointcut("adviceexecution() && within(LoggerAspect)")
     public void codeWithinAspect() {}
 
     private LogField hostname;
 
     private Map<String, Method> methodMap = new HashMap<>();
 
-    public LoggerAspect(){
+    public LoggerAspect() {
 
         try {
             this.hostname = new LogField("hostname", InetAddress.getLocalHost().getHostName());
-        } catch (java.net.UnknownHostException unknownHostException){
+        } catch (java.net.UnknownHostException unknownHostException) {
 
         }
-
     }
 
-    /*public Environment getEnvironment(){
-        return  this.env;
-    }
-
-    public void setEnvironment(Environment env) {
-        this.env = env;
-    }*/
-
-    // @Around("execution(* com.quantal.shared.logger.QuantalJsonLogger.*(..))")
   @Around("allLoggerMethods() && !codeWithinAspect()")
-   // @Around("allLoggerMethods()")
     public Object createAndPopulateLogLine(ProceedingJoinPoint pjp) throws Throwable {
         List<Object> logLineFields = new ArrayList<>();
         LogField event = null, field;

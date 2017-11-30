@@ -6,7 +6,6 @@ import com.quantal.shared.objectmapper.OrikaBeanMapper;
 import com.quantal.shared.services.implementations.MessageServiceImpl;
 import com.quantal.shared.services.interfaces.MessageService;
 import org.aspectj.lang.Aspects;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -61,7 +60,6 @@ public class SharedConfig {
     @Bean
     public LoggerAspect loggerAspect() {
         LoggerAspect aspect = Aspects.aspectOf(LoggerAspect.class);
-        //aspect.setEnvironment(env);
         return aspect;
     }
 
