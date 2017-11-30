@@ -7,9 +7,11 @@
             This should encompass any class that wants to utilize the aspects,
             and does not need to encompass the aspects themselves.
         -->
-        <include within="com.quantal.shared.logger.QuantalJsonLogger.*" />
+
+        <!--<include within="@org.springframework.beans.factory.annotation.Configurable *" />-->
+        <!--<include within="com.quantal.shared.logger.QuantalJsonLogger.*" />-->
         <!--<include within="org.springframework.boot..*" />-->
-        <include within="com.quantal.shared.logger..*" />
+       <include within="com.quantal.shared.logger..*" />
     </weaver>
 
     <aspects>

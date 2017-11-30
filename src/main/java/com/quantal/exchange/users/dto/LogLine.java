@@ -1,22 +1,22 @@
 package com.quantal.exchange.users.dto;
 
+import com.quantal.shared.logger.LogField;
 import lombok.Data;
 
-import java.time.LocalDate;
 
 /**
  * Created by dman on 09/10/2017.
  */
 @Data
 public class LogLine {
-    private String event;
-    private String msg;
-    private String proglang;
-    private String framework;
-    private String frameworkVersion;
-    private String name;
-    private String hostname;
-    private String moduleVersion;
-    private String lang;
-    private LocalDate time;
+    private LogField event;
+    private LogField msg;
+    private LogField proglang;
+    private LogField framework;
+    private LogField frameworkVersion;
+    private LogField name;
+    private LogField hostname;
+    private LogField moduleVersion;
+    private LogField lang;
+    private LogField time;
 }

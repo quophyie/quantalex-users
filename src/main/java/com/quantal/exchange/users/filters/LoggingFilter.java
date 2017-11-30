@@ -6,6 +6,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
+import org.springframework.beans.factory.annotation.Autowire;
+import org.springframework.beans.factory.annotation.Configurable;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -17,6 +20,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 import org.slf4j.MDC;
+import org.springframework.web.filter.GenericFilterBean;
 
 import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEADER_KEY;
 import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_MDC_KEY;
@@ -27,8 +31,11 @@ import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_MDC_
 
 
 @Component
-@Order(1)
-public class LoggingFilter implements Filter {
+//@Order(1)
+//@DependsOn("loggerAspect")
+//@Configurable(autowire= Autowire.BY_TYPE,dependencyCheck=true, preConstruction=true)
+//public class LoggingFilter implements Filter {
+public class LoggingFilter extends GenericFilterBean {
 
 
     /**
@@ -38,10 +45,10 @@ public class LoggingFilter implements Filter {
    // private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
 
-    @Override
+    /*@Override
     public void init(final FilterConfig filterConfig) throws ServletException {
-        logger.info("Initiating LoggingFilter ...");
-    }
+      logger.info("Initiating LoggingFilter ...");
+    }*/
 
     @Override
     //@Async

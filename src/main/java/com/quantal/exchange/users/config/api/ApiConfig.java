@@ -15,6 +15,7 @@ import org.slf4j.ext.XLogger;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.cloud.sleuth.SpanNamer;
 import org.springframework.cloud.sleuth.TraceKeys;
 import org.springframework.cloud.sleuth.Tracer;
@@ -23,6 +24,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.EnableLoadTimeWeaving;
+import org.springframework.context.annotation.ImportResource;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.aspectj.EnableSpringConfigured;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
 import org.springframework.instrument.classloading.InstrumentationLoadTimeWeaver;
 import org.springframework.instrument.classloading.LoadTimeWeaver;
@@ -46,8 +51,6 @@ import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEAD
  * This class should contain the Retrofit API interfaces
  */
 
-//@EnableAspectJAutoProxy
-@EnableLoadTimeWeaving(aspectjWeaving= EnableLoadTimeWeaving.AspectJWeaving.ENABLED)
 @Configuration
 public class ApiConfig// implements AsyncConfigurer
 {
@@ -244,17 +247,6 @@ public class ApiConfig// implements AsyncConfigurer
     }
 
 
-    /*@Bean
-    public LoadTimeWeaver loadTimeWeaver()  throws Throwable {
-        InstrumentationLoadTimeWeaver loadTimeWeaver = new InstrumentationLoadTimeWeaver();
-        return loadTimeWeaver;
-    }*/
-
-    @Bean
-    public LoggerAspect loggerAspect() {
-        LoggerAspect aspect = Aspects.aspectOf(LoggerAspect.class);
-        return aspect;
-    }
 
    /* @Bean
     public SpanLogger slf4jSpanLogger() {
