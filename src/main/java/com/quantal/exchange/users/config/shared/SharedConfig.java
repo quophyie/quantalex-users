@@ -3,7 +3,7 @@ package com.quantal.exchange.users.config.shared;
 import com.quantal.exchange.users.aspects.LoggerAspect;
 import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LogzioConfig;
-import com.quantal.javashared.logger.QuantalGoDaddyLoggerFactory;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.implementations.MessageServiceImpl;
@@ -104,7 +104,7 @@ public class SharedConfig {
 
     @Bean
     public LogzioConfig logzioConfig(@Value("${logzio.token}") String logzioToken) {
-        return QuantalGoDaddyLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
+        return QuantalLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
     }
 
 }

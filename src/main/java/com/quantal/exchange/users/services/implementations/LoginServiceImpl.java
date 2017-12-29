@@ -17,8 +17,8 @@ import com.quantal.javashared.dto.LogEvent;
 import com.quantal.javashared.dto.LogzioConfig;
 import com.quantal.javashared.logger.LogField;
 import com.quantal.javashared.logger.LoggerFactory;
-import com.quantal.javashared.logger.QuantalGoDaddyLogger;
-import com.quantal.javashared.logger.QuantalGoDaddyLoggerFactory;
+import com.quantal.javashared.logger.QuantalLogger;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureException;
@@ -60,7 +60,7 @@ public class LoginServiceImpl implements LoginService {
     //private static Logger logger = LogManager.getLogger();
    // private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
    //private final XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
-    private final QuantalGoDaddyLogger logger;
+    private final QuantalLogger logger;
 
     @Value("#{environment.JWT_SECRET}")
     private String JWT_SECRET;
@@ -78,7 +78,7 @@ public class LoginServiceImpl implements LoginService {
         this.messageService = messageService;
         this.apiGatewayService  = apiGatewayService;
         this.authorizationApiService = authorizationApiService;
-        logger = QuantalGoDaddyLoggerFactory.getLogger(this.getClass(), commonLogFields, logzioConfig);
+        logger = QuantalLoggerFactory.getLogzioLogger(this.getClass(), commonLogFields, logzioConfig);
     }
 
     @Override
@@ -102,8 +102,7 @@ public class LoginServiceImpl implements LoginService {
                 }, taskExecutor)
                .thenApplyAsync(user -> {
                    if (!passwordService.checkPassword(password, user.getPassword())) {
-                       //throw logger.throwing(new PasswordValidationException(""));
-                       ((QuantalGoDaddyLogger)logger).throwing(new PasswordValidationException(""));
+                       throw logger.throwing(new PasswordValidationException(""));
                    }
                    //logger.debug("Requesting login token for {} ... ", email);
                    logger.debug(String.format("Requesting login token for %s ... ", email), new LogField("email", email), new LogEvent("LOGGING_IN"));
