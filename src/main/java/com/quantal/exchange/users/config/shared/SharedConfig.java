@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Created by dman on 12/04/2017.
@@ -103,7 +104,7 @@ public class SharedConfig {
 
     @Bean
     public LogzioConfig logzioConfig(@Value("${logzio.token}") String logzioToken) {
-        return QuantalGoDaddyLoggerFactory.createDefaultLogzioConfig(logzioToken);
+        return QuantalGoDaddyLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
     }
 
 }
