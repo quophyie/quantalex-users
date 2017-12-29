@@ -2,7 +2,7 @@ package com.quantal.exchange.users.services.implementations;
 
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
-import com.quantal.shared.services.interfaces.MessageService;
+import com.quantal.javashared.services.interfaces.MessageService;
 import org.apache.commons.lang3.StringUtils;
 import org.passay.*;
 import org.springframework.beans.factory.annotation.Autowired;

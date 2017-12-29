@@ -6,7 +6,7 @@ import com.quantal.exchange.users.enums.PasswordMatchType;
 import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.jsonviews.UserViews;
 import com.quantal.exchange.users.validators.password.PasswordMatches;
-import com.quantal.shared.controller.BaseControllerAsync;
+import com.quantal.javashared.controller.BaseControllerAsync;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

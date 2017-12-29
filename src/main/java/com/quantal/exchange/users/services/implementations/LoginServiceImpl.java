@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.services.implementations;
 
+import com.godaddy.logging.Logger;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.AuthRequestDto;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
@@ -11,23 +12,31 @@ import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
-import com.quantal.shared.logger.LogField;
-import com.quantal.shared.logger.LoggerFactory;
-import com.quantal.shared.services.interfaces.MessageService;
+import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LogEvent;
+import com.quantal.javashared.dto.LogzioConfig;
+import com.quantal.javashared.logger.LogField;
+import com.quantal.javashared.logger.LoggerFactory;
+import com.quantal.javashared.logger.QuantalGoDaddyLogger;
+import com.quantal.javashared.logger.QuantalGoDaddyLoggerFactory;
+import com.quantal.javashared.services.interfaces.MessageService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.slf4j.ext.XLogger;
-import org.slf4j.ext.XLoggerFactory;
+//import org.apache.logging.log4j.Logger;
+//import org.slf4j.ext.XLogger;
+//import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -45,10 +54,13 @@ public class LoginServiceImpl implements LoginService {
     private ApiGatewayService apiGatewayService;
     private AuthorizationApiService authorizationApiService;
 
+
     @Autowired
     private ExecutorService taskExecutor;
-   // private static Logger logger = LogManager.getLogger();
-   private final XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
+    //private static Logger logger = LogManager.getLogger();
+   // private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+   //private final XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
+    private final QuantalGoDaddyLogger logger;
 
     @Value("#{environment.JWT_SECRET}")
     private String JWT_SECRET;
@@ -58,36 +70,43 @@ public class LoginServiceImpl implements LoginService {
                             PasswordService passwordService,
                             MessageService messageService,
                             ApiGatewayService apiGatewayService,
-                            AuthorizationApiService authorizationApiService) {
+                            AuthorizationApiService authorizationApiService,
+                            CommonLogFields commonLogFields,
+                            LogzioConfig logzioConfig) {
         this.userService = userService;
         this.passwordService = passwordService;
         this.messageService = messageService;
         this.apiGatewayService  = apiGatewayService;
         this.authorizationApiService = authorizationApiService;
+        logger = QuantalGoDaddyLoggerFactory.getLogger(this.getClass(), commonLogFields, logzioConfig);
     }
 
     @Override
     //@Async
     public CompletableFuture<String> login(String email, String password) {
         //logger.debug("Logging in user with email: {}", email);
-        logger.debug(String.format("Logging in user with email: %s", email), new LogField("email", email));
+        Map<String, Object> map = new HashMap<>();
+        map.put("email", email);
+       // logger.debug(String.format("Logging in user with email: {}", email), new LogField("email", email));
+        logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
        return userService.findOneByEmail(email)
                 .thenApplyAsync(user -> {
                     if (user == null) {
                         String message = String.format(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
                         //logger.debug(message);
-                        throw logger.throwing(new NotFoundException(message));
+                         throw logger.throwing(new NotFoundException(message));
                     }
                     //logger.info("found user identified by {}",email );
-                    logger.info(String.format("found user identified by %s",email), new LogField("email", email), new LogField("user", user));
+                    logger.info(String.format("found user identified by %s",email), new LogField("email", email), new LogField("user", user), new LogEvent("LOGGING_IN"));
                     return user;
                 }, taskExecutor)
                .thenApplyAsync(user -> {
                    if (!passwordService.checkPassword(password, user.getPassword())) {
-                       throw logger.throwing(new PasswordValidationException(""));
+                       //throw logger.throwing(new PasswordValidationException(""));
+                       ((QuantalGoDaddyLogger)logger).throwing(new PasswordValidationException(""));
                    }
                    //logger.debug("Requesting login token for {} ... ", email);
-                   logger.debug(String.format("Requesting login token for %s ... ", email), new LogField("email", email));
+                   logger.debug(String.format("Requesting login token for %s ... ", email), new LogField("email", email), new LogEvent("LOGGING_IN"));
                    AuthRequestDto authRequestDto = new AuthRequestDto();
                    authRequestDto.setEmail(email);
                    return authorizationApiService.requestToken(authRequestDto);
@@ -95,6 +114,7 @@ public class LoginServiceImpl implements LoginService {
               // .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
                .thenCompose(tokenCompletableFuture -> tokenCompletableFuture)
                .thenApply(token -> token.getToken());
+
 
     }
 
@@ -138,3 +158,4 @@ public class LoginServiceImpl implements LoginService {
         }
     }
 }
+

@@ -5,8 +5,8 @@ import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
-import com.quantal.shared.services.interfaces.MessageService;
-import com.quantal.shared.util.CommonUtils;
+import com.quantal.javashared.services.interfaces.MessageService;
+import com.quantal.javashared.util.CommonUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ import retrofit2.HttpException;
 
 import java.util.concurrent.CompletableFuture;
 
-import static com.quantal.shared.facades.AbstractBaseFacade.toRESTResponse;
+import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
 
 /**
  * Created by dman on 08/07/2017.

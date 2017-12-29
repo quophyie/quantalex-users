@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.facades.LoginFacade;
 import com.quantal.exchange.users.jsonviews.LoginView;
-import com.quantal.shared.controller.BaseControllerAsync;
+import com.quantal.javashared.controller.BaseControllerAsync;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

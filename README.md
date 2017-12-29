@@ -24,6 +24,8 @@ Refactor the base package name (i.e. **`com.quantal.quantalmicroservicetemplate`
  
  - **`EMAIL_SERVICE_ENDPOINT`** - The base end point for the email microservice - e.g. **`http://localhost:3000`**
  
+ - **`LOGZIO_TOKEN`** - The [Logz.io](http://logz.io) token to use to send logs to [Logz.io](http://logz.io)
+ 
 
 ## application.properties  (located at src/main/java/resource)
   

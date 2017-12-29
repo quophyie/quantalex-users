@@ -6,7 +6,7 @@ import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.api.EmailApiService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
-import com.quantal.shared.logger.LoggerFactory;
+import com.quantal.javashared.logger.LoggerFactory;
 import okhttp3.*;
 import okio.Buffer;
 import org.aspectj.lang.Aspects;

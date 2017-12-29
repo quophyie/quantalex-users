@@ -42,15 +42,16 @@
 			</exclusions>
 		</dependency>
 
-		<dependency>
+		<!--<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-log4j2</artifactId>
 		</dependency>
 
-		<!--<dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-aop</artifactId>
 		</dependency>-->
+
 
 		<dependency>
 			<groupId>org.passay</groupId>
@@ -76,7 +77,7 @@
 			<scope>test</scope>
 		</dependency>
 
-		<dependency>
+		<!--<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-slf4j-impl</artifactId>
 			<version>${log4j2.version}</version>
@@ -86,19 +87,19 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-ext</artifactId>
 			<version>1.7.25</version>
-		</dependency>
+		</dependency>-->
 
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-sleuth</artifactId>
 		</dependency>
 
-		<dependency>
+		<!--<dependency>
 			<groupId>com.savoirtech.logging</groupId>
 			<artifactId>slf4j-json-logger</artifactId>
 			<version>2.0.2</version>
-		</dependency>
-
+		</dependency>-->
+<!--
 
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -122,7 +123,7 @@
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-instrument</artifactId>
-		</dependency>
+		</dependency>-->
 		<!--<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
@@ -134,23 +135,23 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
-		<dependency>
+		<!--<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-aop</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.aspectj</groupId>
 			<artifactId>aspectjrt</artifactId>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
-		<dependency>
+		<!--<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
-		</dependency>
+		</dependency>-->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -186,7 +187,7 @@
 						<sourceDirectory>src/main/java</sourceDirectory>
 					</configuration>
 				</plugin>
-
+<!--
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>aspectj-maven-plugin</artifactId>
@@ -203,13 +204,13 @@
                                 <artifactId>spring-aspects</artifactId>
                             </aspectLibrary>
                         </aspectLibraries>
-                        <!--<weaveDependencies>
+                        &lt;!&ndash;<weaveDependencies>
                             <dependency>
                                 <groupId>com.github.quophyie</groupId>
                                 <artifactId>shared</artifactId>
                             </dependency>
                         </weaveDependencies>- ->
-						<!- -<fork>true</fork>-->
+						<!- -<fork>true</fork>&ndash;&gt;
 					</configuration>
 					<executions>
 						<execution>
@@ -219,17 +220,17 @@
 							</goals>
 						</execution>
 					</executions>
-				</plugin>
+				</plugin>-->
 
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
 					<configuration>
 						<!--<fork>false</fork>-->
-						<agent>
-							<!--<aspectj>${user.home}/.m2/repository/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar</aspectj>-->
+						<!--<agent>
+							&lt;!&ndash;<aspectj>${user.home}/.m2/repository/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar</aspectj>&ndash;&gt;
 							${user.home}/.m2/repository/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar,${user.home}/.m2/repository/org/springframework/spring-instrument/${spring.version}/spring-instrument-${spring.version}.jar
-						</agent>
+						</agent>-->
 						<jvmArguments>
 						-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005
 						<!-- -javaagent:${user.home}/.m2/repository/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar
@@ -251,19 +252,19 @@
 							<artifactId>spring-boot-thin-layout</artifactId>
 							<version>${thin-jar.version}</version>
 						</dependency>
-						<dependency>
+				<!--		<dependency>
 							<groupId>org.aspectj</groupId>
 							<artifactId>aspectjweaver</artifactId>
 							<version>${aspectj.version}</version>
-						</dependency>
+						</dependency>-->
 					</dependencies>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<configuration>
+					<!--<configuration>
 						<argLine>-javaagent:${user.home}/.m2/repository/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar</argLine>
-					</configuration>
+					</configuration>-->
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -272,11 +273,11 @@
 				<groupId>org.projectlombok</groupId>
 				<artifactId>lombok-maven-plugin</artifactId>
 			</plugin>
-
+<!--
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>aspectj-maven-plugin</artifactId>
-			</plugin>
+			</plugin>-->
 		</plugins>
 
 	</build>

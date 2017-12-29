@@ -1,7 +1,7 @@
 package com.quantal.exchange.users.filters;
 
-import com.quantal.shared.logger.LogField;
-import com.quantal.shared.logger.LoggerFactory;
+import com.quantal.javashared.logger.LogField;
+import com.quantal.javashared.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.ext.XLogger;
@@ -43,7 +43,8 @@ public class LoggingFilter extends GenericFilterBean {
      */
     //private final Logger logger = LogManager.getLogger();
    // private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
-    private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
+    //private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
+    private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
 
     /*@Override
     public void init(final FilterConfig filterConfig) throws ServletException {

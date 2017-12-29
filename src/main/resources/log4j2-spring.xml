@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration monitorInterval="60">
     <Properties>
-        <Property name="log-path">/var/log/</Property>
+        <Property name="log-path">/var/log</Property>
         <!--<Property scope="context" name="springAppName" source="spring.application.name"/>-->
         <Property name="springAppName">${spring.application.name}</Property>
         <!-- Example for logging into the build folder of your project -->
@@ -19,12 +19,12 @@
                 <!--<pattern>
                     [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [${springAppName:-},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-B3-ParentSpanId:-},%X{X-Span-Export:-}]]- %msg%n
                 </pattern>-->
-                <!--<pattern>
-                    [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [%X{X-B3-TraceId},%X{X-B3-SpanId},%X{X-B3-ParentSpanId},%X{X-Span-Export}]- %msg%n
-                </pattern>-->
                 <pattern>
-                    %msg%n
+                    [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [%X{X-B3-TraceId},%X{X-B3-SpanId},%X{X-B3-ParentSpanId},%X{X-Span-Export}]- %msg%n
                 </pattern>
+                <!--<pattern>
+                    %msg%n
+                </pattern>-->
                 <!--<pattern>${CONSOLE_LOG_PATTERN}</pattern>-->
             </PatternLayout>
         </Console>

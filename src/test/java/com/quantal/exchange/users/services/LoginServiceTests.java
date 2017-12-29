@@ -16,8 +16,9 @@ import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
-import com.quantal.shared.services.interfaces.MessageService;
-import com.quantal.shared.util.CommonUtils;
+import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.services.interfaces.MessageService;
+import com.quantal.javashared.util.CommonUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,7 +70,7 @@ public class LoginServiceTests {
 
     @Before
     public void setUp() {
-        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationApiService);
+        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationApiService, new CommonLogFields(), null);
         user = UserTestUtil.createUserModel
                 (1L,
                         "testfirstname",

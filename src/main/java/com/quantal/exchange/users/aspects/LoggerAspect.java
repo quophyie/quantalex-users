@@ -1,6 +1,6 @@
 package com.quantal.exchange.users.aspects;
 
-import com.quantal.shared.logger.LogField;
+import com.quantal.javashared.dto.LogField;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -19,6 +19,7 @@ import org.springframework.web.servlet.LocaleResolver;
 
 import java.lang.reflect.Method;
 import java.net.InetAddress;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ import java.util.Map;
 /**
  * Created by dman on 09/10/2017.
  */
-@Aspect
+//@Aspect
 //@Scope("singleton")
 @Configurable(autowire= Autowire.BY_TYPE,dependencyCheck=true, preConstruction=true)
 @Component
@@ -51,7 +52,7 @@ public class LoggerAspect  {
     @Autowired
     private LocaleResolver localeResolver;
 
-    @Pointcut("execution(* com.quantal.shared.logger.QuantalJsonLogger.*(..))")
+    @Pointcut("execution(* com.quantal.javashared.logger.QuantalJsonLogger.*(..))")
     public void allLoggerMethods() {}
 
     @Pointcut("cflow(within(LoggerAspect))")
@@ -72,7 +73,7 @@ public class LoggerAspect  {
 
   @Around("allLoggerMethods() && !codeWithinAspect()")
     public Object createAndPopulateLogLine(ProceedingJoinPoint pjp) throws Throwable {
-        List<Object> logLineFields = new ArrayList<>();
+         List<Object> logLineFields = new ArrayList<>();
         LogField event = null, field;
         if (pjp.getArgs().length > 1) {
             for (int idx = 1; idx < pjp.getArgs().length; idx++) {
@@ -120,7 +121,7 @@ public class LoggerAspect  {
 
 
         LogField lang = new LogField("lang", Locale.UK);
-        LogField time = new LogField("time", LocalDateTime.now().toString());
+        LogField time = new LogField("time", Instant.now().toString());
 
         logLineFields.add(msgField);
         logLineFields.add(proglang);

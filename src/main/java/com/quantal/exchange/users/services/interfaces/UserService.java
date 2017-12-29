@@ -2,7 +2,7 @@ package com.quantal.exchange.users.services.interfaces;
 
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.models.User;
-import com.quantal.shared.services.interfaces.RepositoryServiceAsync;
+import com.quantal.javashared.services.interfaces.RepositoryServiceAsync;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

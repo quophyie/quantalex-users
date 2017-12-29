@@ -3,7 +3,7 @@ package com.quantal.exchange.users.services;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.services.implementations.PasswordServiceImpl;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
-import com.quantal.shared.services.interfaces.MessageService;
+import com.quantal.javashared.services.interfaces.MessageService;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

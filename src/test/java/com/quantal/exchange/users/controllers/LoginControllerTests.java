@@ -4,8 +4,8 @@ import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvi
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.facades.LoginFacade;
-import com.quantal.shared.services.interfaces.MessageService;
-import com.quantal.shared.util.TestUtil;
+import com.quantal.javashared.services.interfaces.MessageService;
+import com.quantal.javashared.util.TestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
