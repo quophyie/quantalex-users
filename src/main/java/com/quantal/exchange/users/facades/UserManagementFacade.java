@@ -91,10 +91,10 @@ public class UserManagementFacade extends AbstractBaseFacade {
   public CompletableFuture<ResponseEntity> save(UserDto userDto){
       User userToCreate = toModel(userDto, User.class);
       UserDto createdDto = new UserDto();
-      //logger.debug("creating user: user ", userDto);
+
       logger.with(USER_KEY, userDto)
-              .with(EVENT_KEY, Events.USER_CREATE)
-              .debug("creating user ");
+            .with(EVENT_KEY, Events.USER_CREATE)
+            .debug("creating user ");
       AuthRequestDto authRequestDto = new AuthRequestDto();
       authRequestDto.setEmail(userDto.getEmail());
        return userService
@@ -113,28 +113,6 @@ public class UserManagementFacade extends AbstractBaseFacade {
                   ResponseEntity responseEntity = toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
                   return responseEntity;
               });
-              /*.exceptionally( ex -> {
-                  ResponseEntity responseEntity = toRESTResponse(null,
-                          messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR),
-                          HttpStatus.INTERNAL_SERVER_ERROR);
-                  Exception businessEx = CommonUtils.extractBusinessException(ex);
-                  if (businessEx instanceof AlreadyExistsException) {
-                      responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.CONFLICT);
-                  } else if (businessEx instanceof NullPointerException) {
-                      responseEntity = toRESTResponse(null,
-                              messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED,
-                                      new String[]{User.class.getSimpleName()}),
-                              HttpStatus.BAD_REQUEST);
-                  } else if (businessEx instanceof PasswordValidationException) {
-                      responseEntity = toRESTResponse(null, businessEx.getMessage(), HttpStatus.BAD_REQUEST);
-                  } else if (businessEx instanceof HttpException) {
-                      HttpStatus status = HttpStatus.valueOf(((HttpException) businessEx).code());
-                      responseEntity = toRESTResponse(null, businessEx.getMessage(), status);
-                  }
-                  ;
-                  logger.debug("Error creating user:", ex);
-                  return responseEntity;
-              });*/
 
   }
 
@@ -188,10 +166,10 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
 
     public CompletableFuture<?> deleteByUserId(Long userId) {
-      //logger.info("deleting user identified by {}", userId);
+
         logger.with(EVENT_KEY, Events.USER_DELETE)
-                .with(USER_ID_KEY, userId)
-                .info("deleting user identified by {}", userId);
+              .with(USER_ID_KEY, userId)
+              .info("deleting user identified by {}", userId);
         CompletableFuture<?> userCompletableFuture = userService.findOne(userId);
             return userCompletableFuture.thenCombine(userService.deleteById(userId),  (user, deleted) -> user)
                     .thenApply(user -> {
@@ -358,12 +336,8 @@ public class UserManagementFacade extends AbstractBaseFacade {
     }
 
   public CompletableFuture<String> getFunnyCat(){
-    //String result = "";
-    //String result = giphyApiService.getGiphy("funny+cat", "dc6zaTOxFJmzC");
     CompletableFuture<String> result = giphyApiService
-            .getGiphy("funny+cat", "dc6zaTOxFJmzC").thenApply((res) -> {
-      return res;
-    });
+            .getGiphy("funny+cat", "dc6zaTOxFJmzC").thenApply((res) -> res);
     return result;
   }
 

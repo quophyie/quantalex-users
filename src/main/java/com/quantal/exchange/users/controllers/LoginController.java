@@ -30,7 +30,6 @@ public class LoginController extends BaseControllerAsync{
     }
 
     @PostMapping(value = "/login/", consumes = MediaType.APPLICATION_JSON_VALUE)
-    //@Async
     public CompletableFuture<ResponseEntity<?>> login(@RequestBody LoginDto loginDto){
         return loginFacade.login(loginDto)
                 .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));

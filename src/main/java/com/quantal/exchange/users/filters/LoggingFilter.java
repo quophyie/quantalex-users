@@ -36,30 +36,17 @@ import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
 
 
 @Component
-//@Order(1)
-//@DependsOn("loggerAspect")
-//@Configurable(autowire= Autowire.BY_TYPE,dependencyCheck=true, preConstruction=true)
-//public class LoggingFilter implements Filter {
 public class LoggingFilter extends GenericFilterBean {
 
 
     /**
      * Logging todo o request da aplicação para auditoria
      */
-    //private final Logger logger = LogManager.getLogger();
-   // private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
-    //private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
-    //private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+
     @InjectLogger
     private QuantalLogger logger;
 
-    /*@Override
-    public void init(final FilterConfig filterConfig) throws ServletException {
-      logger.info("Initiating LoggingFilter ...");
-    }*/
-
     @Override
-    //@Async
     public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain) throws IOException, ServletException {
 
         try {
@@ -71,20 +58,17 @@ public class LoggingFilter extends GenericFilterBean {
                 MDC.put(TRACE_ID_MDC_KEY, UUID.randomUUID().toString());
                 ThreadContext.put(TRACE_ID_MDC_KEY, UUID.randomUUID().toString());
             }
-            //logger.debug("request received successfully {}", request);
-            //logger.info("request received successfully", new LogField("request",request.toString()));
+
             logger.with(REQUEST_KEY,request.toString())
-                    .with(EVENT_KEY, "REQUEST_RECEIVED")
-                    .info("request received successfully");
+                  .with(EVENT_KEY, "REQUEST_RECEIVED")
+                  .info("request received successfully");
             chain.doFilter(request, response);
             traceId = ((HttpServletResponse) response).getHeader(TRACE_ID_HEADER_KEY);
             if (StringUtils.isEmpty(traceId)) {
                 ((HttpServletResponse) response).addHeader(TRACE_ID_HEADER_KEY, ThreadContext.get(TRACE_ID_MDC_KEY));
             }
 
-            //logger.debug("response sent successfully {}", response);
             logger.with(RESPONSE_KEY, response.toString()).debug("response sent successfully ", new LogEvent("RESPONSE_SENT"));
-            //logger.debug("response sent successfully ", new LogField("response", response.toString()));
         } finally {
             ThreadContext.remove(TRACE_ID_MDC_KEY);
         }

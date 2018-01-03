@@ -62,35 +62,30 @@ public class LoginServiceImpl implements LoginService {
                             PasswordService passwordService,
                             MessageService messageService,
                             ApiGatewayService apiGatewayService,
-                            AuthorizationApiService authorizationApiService/*,
-                            CommonLogFields commonLogFields,
-                            LogzioConfig logzioConfig*
-                            */) {
+                            AuthorizationApiService authorizationApiService) {
         this.userService = userService;
         this.passwordService = passwordService;
         this.messageService = messageService;
         this.apiGatewayService  = apiGatewayService;
         this.authorizationApiService = authorizationApiService;
-        //logger = QuantalLoggerFactory.getLogzioLogger(this.getClass(), commonLogFields, logzioConfig);
     }
 
     @Override
     //@Async
     public CompletableFuture<String> login(String email, String password) {
-        //logger.debug("Logging in user with email: {}", email);
+
         Map<String, Object> map = new HashMap<>();
         map.put("email", email);
-       // logger.debug(String.format("Logging in user with email: {}", email), new LogField("email", email));
-        logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
+
+       logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
        return userService.findOneByEmail(email)
                 .thenApplyAsync(user -> {
                     if (user == null) {
                         String message = String.format(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
-                        //logger.debug(message);
-                         throw logger.throwing(new NotFoundException(message));
+
+                        throw logger.throwing(new NotFoundException(message));
                     }
-                    //logger.info("found user identified by {}",email );
-                    //logger.info(String.format("found user identified by %s",email), new LogField("email", email), new LogField("user", user), new LogEvent("LOGGING_IN"));
+
                     logger.with("email", email)
                           .with("user", user)
                           .info(String.format("found user identified by %s",email), new LogEvent("LOGGING_IN"));
@@ -100,7 +95,7 @@ public class LoginServiceImpl implements LoginService {
                    if (!passwordService.checkPassword(password, user.getPassword())) {
                        throw logger.throwing(new PasswordValidationException(""));
                    }
-                   //logger.debug("Requesting login token for {} ... ", email);
+
                    logger.with("email", email)
                          .debug(String.format("Requesting login token for %s ... ", email), new LogEvent("LOGGING_IN"));
                    AuthRequestDto authRequestDto = new AuthRequestDto();
@@ -138,7 +133,7 @@ public class LoginServiceImpl implements LoginService {
                 throw logger.throwing(new IllegalArgumentException(message));
             }
 
-            //logger.debug("Contacting authorization service to delete token with jti {} ...", jti);
+
             logger.with("jti", jti)
                   .debug(String.format("Contacting authorization service to delete token with jti %s ...", jti));
             return authorizationApiService

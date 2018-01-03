@@ -280,8 +280,8 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
             try {
 
                 logger.with(EVENT_KEY, "JWT_CREATE")
-                        .with("issuer",  issuer)
-                        .debug("creating JWT with issuer: {}", issuer);
+                      .with("issuer",  issuer)
+                      .debug("creating JWT with issuer: {}", issuer);
 
                 JwsHeader header = Jwts.jwsHeader();
                 header.setAlgorithm(JWT_ALGORITHM);
