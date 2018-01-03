@@ -43,7 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEADER_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_HEADER_KEY;
 
 /**
  * Created by dman on 14/03/2017.

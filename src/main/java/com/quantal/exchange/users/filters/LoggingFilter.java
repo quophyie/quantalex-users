@@ -1,7 +1,9 @@
 package com.quantal.exchange.users.filters;
 
-import com.quantal.javashared.logger.LogField;
+import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.dto.LogEvent;
 import com.quantal.javashared.logger.LoggerFactory;
+import com.quantal.javashared.logger.QuantalLogger;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.ThreadContext;
 import org.slf4j.ext.XLogger;
@@ -22,8 +24,11 @@ import java.util.UUID;
 import org.slf4j.MDC;
 import org.springframework.web.filter.GenericFilterBean;
 
-import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_HEADER_KEY;
-import static com.quantal.exchange.users.constants.CommonConstants.TRACE_ID_MDC_KEY;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
+import static com.quantal.javashared.constants.CommonConstants.REQUEST_KEY;
+import static com.quantal.javashared.constants.CommonConstants.RESPONSE_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_HEADER_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
 
 /**
  * Created by dman on 08/07/2017.
@@ -44,7 +49,9 @@ public class LoggingFilter extends GenericFilterBean {
     //private final Logger logger = LogManager.getLogger();
    // private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     //private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
-    private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+    //private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+    @InjectLogger
+    private QuantalLogger logger;
 
     /*@Override
     public void init(final FilterConfig filterConfig) throws ServletException {
@@ -65,7 +72,10 @@ public class LoggingFilter extends GenericFilterBean {
                 ThreadContext.put(TRACE_ID_MDC_KEY, UUID.randomUUID().toString());
             }
             //logger.debug("request received successfully {}", request);
-            logger.info("request received successfully", new LogField("request",request.toString()));
+            //logger.info("request received successfully", new LogField("request",request.toString()));
+            logger.with(REQUEST_KEY,request.toString())
+                    .with(EVENT_KEY, "REQUEST_RECEIVED")
+                    .info("request received successfully");
             chain.doFilter(request, response);
             traceId = ((HttpServletResponse) response).getHeader(TRACE_ID_HEADER_KEY);
             if (StringUtils.isEmpty(traceId)) {
@@ -73,7 +83,8 @@ public class LoggingFilter extends GenericFilterBean {
             }
 
             //logger.debug("response sent successfully {}", response);
-            logger.debug("response sent successfully ", new LogField("response", response.toString()));
+            logger.with(RESPONSE_KEY, response.toString()).debug("response sent successfully ", new LogEvent("RESPONSE_SENT"));
+            //logger.debug("response sent successfully ", new LogField("response", response.toString()));
         } finally {
             ThreadContext.remove(TRACE_ID_MDC_KEY);
         }
@@ -81,6 +92,6 @@ public class LoggingFilter extends GenericFilterBean {
 
     @Override
     public void destroy() {
-        logger.warn("Destroying LoggingFilter ...");
+        logger.with(EVENT_KEY, "FILTER_DESTROY").warn("Destroying LoggingFilter ...");
     }
 }

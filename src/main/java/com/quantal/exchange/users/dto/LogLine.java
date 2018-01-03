@@ -1,6 +1,6 @@
 package com.quantal.exchange.users.dto;
 
-import com.quantal.javashared.logger.LogField;
+import com.quantal.javashared.dto.LogField;
 import lombok.Data;
 
 

@@ -1,6 +1,7 @@
 package com.quantal.exchange.users.services.implementations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quantal.exchange.users.constants.Events;
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
@@ -9,6 +10,8 @@ import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
+import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
@@ -42,13 +45,18 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.quantal.javashared.constants.CommonConstants.EMAIL_KEY;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
+
 /**
  * Created by dman on 08/03/2017.
  */
 @Service
 public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> implements UserService {
 
-    private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+    //private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+    @InjectLogger
+    private QuantalLogger logger;
 
     private UserRepository userRepository;
     private MessageService messageService;
@@ -271,7 +279,9 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
         }
             try {
 
-                logger.debug("creating JWT with issuer: {}", issuer);
+                logger.with(EVENT_KEY, "JWT_CREATE")
+                        .with("issuer",  issuer)
+                        .debug("creating JWT with issuer: {}", issuer);
 
                 JwsHeader header = Jwts.jwsHeader();
                 header.setAlgorithm(JWT_ALGORITHM);
@@ -285,7 +295,9 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                         .claim("type", "user")
                         .signWith(SignatureAlgorithm.HS256, keyAsBase64)
                         .compact();
-                logger.debug("created JWT: {}", compactJws);
+                logger.with(EVENT_KEY, "JWT_CREATE")
+                        .with("jwt",  compactJws)
+                        .debug("created JWT: {}", compactJws);
                 return compactJws;
             } catch (UnsupportedEncodingException uee){
               logger.debug("Error encoding JWT secret:", uee);

@@ -5,6 +5,10 @@ import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.models.User;
+import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LogzioConfig;
+import com.quantal.javashared.logger.QuantalLogger;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +33,8 @@ import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
 //@Slf4j
 public class ExceptionHandlerCotrollerAdvice {
 
-    private Logger logger  = LogManager.getLogger();
+    @Autowired
+    private QuantalLogger logger;
 
     private MessageService messageService;
 
@@ -63,7 +68,7 @@ public class ExceptionHandlerCotrollerAdvice {
             HttpStatus status = HttpStatus.valueOf(((HttpException) businessEx).code());
             responseEntity = toRESTResponse(null, businessEx.getMessage(), status);
         }
-        logger.error(ex);
+        logger.error(ex.getMessage(),ex);
         return responseEntity;
     }
 

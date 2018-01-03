@@ -6,9 +6,10 @@ import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
+import com.quantal.javashared.annotations.logger.InjectLogger;
 import com.quantal.javashared.facades.AbstractBaseFacade;
-import com.quantal.javashared.logger.LogField;
-import com.quantal.javashared.logger.LoggerFactory;
+//import com.quantal.javashared.logger.LogField;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
@@ -17,17 +18,20 @@ import com.quantal.javashared.util.CommonUtils;
 import org.apache.commons.lang3.StringUtils;
 //import org.apache.logging.log4j.LogManager;
 //import org.apache.logging.log4j.Logger;
-import org.slf4j.ext.XLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.quantal.javashared.constants.CommonConstants.EMAIL_KEY;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
+import static com.quantal.javashared.constants.CommonConstants.STATUS_CODE_KEY;
+import static com.quantal.javashared.constants.CommonConstants.USER_KEY;
 
 //import com.savoirtech.logging.slf4j.json.LoggerFactory;
 
@@ -38,7 +42,9 @@ import java.util.stream.Collectors;
 public class LoginFacade extends AbstractBaseFacade {
 
     //private Logger logger  = LogManager.getLogger();
-    private XLogger logger  = LoggerFactory.getLogger(this.getClass());
+    //private XLogger logger  = LoggerFactory.getLogger(this.getClass());
+    @InjectLogger
+    private QuantalLogger logger;
     private MessageService messageService;
     private LoginService loginService;
 
@@ -60,7 +66,10 @@ public class LoginFacade extends AbstractBaseFacade {
     //@Async
     public CompletableFuture<ResponseEntity> login(LoginDto loginDto){
         String email = loginDto != null ? loginDto.getEmail() : "";
-        logger.debug(String.format("Logging in user with email: %s", email), new LogField("email", email));
+        //logger.debug(String.format("Logging in user with email: %s", email), new LogField("email", email));
+        logger.with(EMAIL_KEY, "email")
+              .with(EVENT_KEY, "LOGIN")
+              .debug(String.format("Logging in user with email: %s", email));
         //logger.debug("Logging in user with email: {}", email);
         /*logger.debug()
                 .message(String.format("Logging in user with email: %s", email))
@@ -69,7 +78,10 @@ public class LoginFacade extends AbstractBaseFacade {
             String msg = messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED);
             ResponseEntity<?> responseEntity = toRESTResponse(null, msg, HttpStatus.BAD_REQUEST);
             //logger.debug(String.format("%s:%s",HttpStatus.BAD_REQUEST.toString(),msg));
-            logger.debug(String.format("%s",msg), new LogField("statusCode", HttpStatus.BAD_REQUEST.toString()));
+            //logger.debug(String.format("%s",msg), new LogField("statusCode", HttpStatus.BAD_REQUEST.toString()));
+            logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.toString())
+                    .with(com.quantal.javashared.constants.CommonConstants.EVENT_KEY, "LOGIN")
+                    .debug(String.format("%s",msg));
             /*logger.debug()
                     .message(String.format("%s:%s",HttpStatus.BAD_REQUEST.toString(),msg))
                     .log();*/
@@ -81,7 +93,9 @@ public class LoginFacade extends AbstractBaseFacade {
                     TokenDto tokenDto = new TokenDto();
                     tokenDto.setToken(token);
                     //logger.info("login successful. token: {}", token);
-                    logger.info(String.format("login successful.", new LogField("token", token)));
+                    logger.with(EVENT_KEY, "LOGIN")
+                            .with("token", token)
+                            .info(String.format("login successful."));
                     /*logger.info()
                             .message(String.format("login successful. token: %s", token))
                             .log();*/
@@ -95,7 +109,9 @@ public class LoginFacade extends AbstractBaseFacade {
                         String errMsg = messageService.getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD);
                         responseEntity = toRESTResponse(null, errMsg, HttpStatus.UNAUTHORIZED);
                         //logger.info("login failed: " + errMsg+". {} . HttpStatus Code: {}", busEx, HttpStatus.UNAUTHORIZED);
-                        logger.error(String.format("login failed:%s", errMsg), busEx, new LogField("statusCode", HttpStatus.UNAUTHORIZED));
+                        logger
+                                .with(STATUS_CODE_KEY,  HttpStatus.UNAUTHORIZED)
+                                .error(String.format("login failed:%s", errMsg), busEx);
                         /*logger.error()
                                 .exception(String.format("login failed: %s. HttpStatus Code: {}",errMsg, HttpStatus.UNAUTHORIZED),busEx)
                                 .log();*/
@@ -110,7 +126,9 @@ public class LoginFacade extends AbstractBaseFacade {
 
     public CompletableFuture<ResponseEntity> logout(Long userId, String authHeader) {
         //logger.debug("logging out user with Id {}", userId);
-        logger.debug(String.format("logging out user with Id %s", userId), new LogField("userId", userId));
+        logger.with(USER_KEY, userId)
+                .with(EVENT_KEY, "LOGOUT")
+                .debug(String.format("logging out user with Id %s", userId));
        /* logger.debug()
         .message(String.format("logging out user with Id %d", userId))
         .field("userId", userId)
@@ -120,7 +138,9 @@ public class LoginFacade extends AbstractBaseFacade {
             String message = messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{"authorisation header"});
             ResponseEntity responseEntity = toRESTResponse(null, message, HttpStatus.BAD_REQUEST);
             //logger.debug("login failed: {}. HttpStatus Code: {}", message, HttpStatus.BAD_REQUEST.value());
-            logger.info(String.format("login failed: %s.", message), new LogField("statusField", HttpStatus.BAD_REQUEST.value()));
+            logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.value())
+                    .with(EVENT_KEY, "LOGOUT")
+                    .info(String.format("login failed: %s.", message));
             /*logger.debug()
                     .message(String.format("login failed: %s.", message))
                     .field("statusCode",HttpStatus.BAD_REQUEST.value())
@@ -138,7 +158,10 @@ public class LoginFacade extends AbstractBaseFacade {
             String message = messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{"authorization header bearer token"});
             ResponseEntity responseEntity = toRESTResponse(null, message, HttpStatus.BAD_REQUEST);
             //logger.debug("login failed: {}. HttpStatus Code: {}", message, HttpStatus.BAD_REQUEST.value());
-            logger.debug(String.format("login failed: %s", message), new LogField("statusField", HttpStatus.BAD_REQUEST.value()));
+           // logger.debug(String.format("login failed: %s", message), new LogField("statusField", HttpStatus.BAD_REQUEST.value()));
+            logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.value())
+                    .with(EVENT_KEY, "LOGOUT")
+                    .debug(String.format("login failed: %s", message));
             /*logger.debug()
             .message(String.format("login failed: %s", message))
             .field("statusCode", HttpStatus.BAD_REQUEST.value())
@@ -165,8 +188,12 @@ public class LoginFacade extends AbstractBaseFacade {
                     }
 
                     //logger.debug("login failed: {}. HttpStatus Code: {}", message, HttpStatus.BAD_REQUEST.value());
-                    logger.debug(String.format("login failed: %s",message), new LogField("statusField", HttpStatus.BAD_REQUEST.value()));
-                   /* logger.debug()
+                    //logger.debug(String.format("login failed: %s",message), new LogField("statusField", HttpStatus.BAD_REQUEST.value()));
+                    logger
+                            .with(EVENT_KEY, ex)
+                            .with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.value()).debug(String.format("login failed: %s",message));
+
+                    /* logger.debug()
                     .message(String.format("login failed: %s", message))
                     .field("statusCode",HttpStatus.BAD_REQUEST.value())
                     .log();*/

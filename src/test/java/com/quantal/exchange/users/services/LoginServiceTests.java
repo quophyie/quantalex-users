@@ -70,7 +70,7 @@ public class LoginServiceTests {
 
     @Before
     public void setUp() {
-        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationApiService, new CommonLogFields(), null);
+        loginService = new LoginServiceImpl(userService, passwordService, messageService, apiGatewayService, authorizationApiService/*, new CommonLogFields(), null*/);
         user = UserTestUtil.createUserModel
                 (1L,
                         "testfirstname",

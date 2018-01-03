@@ -1,8 +1,10 @@
 package com.quantal.exchange.users.config.shared;
 
 import com.quantal.exchange.users.aspects.LoggerAspect;
+import com.quantal.javashared.beanpostprocessors.LoggerInjectorBeanPostProcessor;
 import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LogzioConfig;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -105,6 +107,16 @@ public class SharedConfig {
     @Bean
     public LogzioConfig logzioConfig(@Value("${logzio.token}") String logzioToken) {
         return QuantalLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
+    }
+
+    @Bean
+    public QuantalLogger quantalLogger( CommonLogFields commonLogFields, LogzioConfig logzioConfig){
+        return  QuantalLoggerFactory.getLogzioLogger(this.getClass(), commonLogFields ,logzioConfig);
+    }
+
+    @Bean
+    public LoggerInjectorBeanPostProcessor loggerInjectorBeanPostProcessor(CommonLogFields commonLogFields, LogzioConfig logzioConfig){
+        return new LoggerInjectorBeanPostProcessor(commonLogFields, logzioConfig);
     }
 
 }
