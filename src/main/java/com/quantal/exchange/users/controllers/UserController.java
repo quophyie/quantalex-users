@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.PasswordMatchType;
 import com.quantal.exchange.users.facades.UserManagementFacade;
+import com.quantal.exchange.users.jsonviews.LoginView;
 import com.quantal.exchange.users.jsonviews.UserViews;
 import com.quantal.exchange.users.validators.password.PasswordMatches;
 import com.quantal.javashared.controller.BaseControllerAsync;
+import com.quantal.javashared.jsonviews.DefaultJsonView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -64,19 +66,22 @@ public class UserController extends BaseControllerAsync {
 
   @DeleteMapping(value="/{userId}")
   public CompletableFuture<?> deleteUserbyId(@PathVariable Long userId){
-    return userManagementFacade.deleteByUserId(userId);
+    return userManagementFacade.deleteByUserId(userId)
+            .thenApply(responseEntity -> applyJsonView((ResponseEntity) responseEntity, DefaultJsonView.ResponseDtoView.class, objectMapper));
   }
 
   @PostMapping(value="/forgotten-password")
   public CompletableFuture<?> forgottenPassword(@RequestBody
                                                  @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
                                                           UserDto userDto){
-    return userManagementFacade.requestPasswordReset(userDto.getEmail());
+    return userManagementFacade.requestPasswordReset(userDto.getEmail())
+            .thenApply( responseEntity -> applyJsonView(responseEntity, DefaultJsonView.ResponseDtoView.class, objectMapper));
   }
 
   @PostMapping(value="/reset-password")
   public CompletableFuture<?> resetPassword(@RequestBody UserDto userDto){
-    return userManagementFacade.resetPassword(userDto);
+    return userManagementFacade.resetPassword(userDto)
+            .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));
   }
 
   @GetMapping(value="/")

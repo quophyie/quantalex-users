@@ -11,15 +11,13 @@ import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.dto.LogEvent;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.services.interfaces.MessageService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureException;
 import org.apache.commons.lang3.StringUtils;
-//import org.apache.logging.log4j.Logger;
-//import org.slf4j.ext.XLogger;
-//import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -135,7 +133,8 @@ public class LoginServiceImpl implements LoginService {
 
 
             logger.with("jti", jti)
-                  .debug(String.format("Contacting authorization service to delete token with jti %s ...", jti));
+                    .with(CommonConstants.EVENT_KEY, "LOG_OUT")
+                    .debug(String.format("Contacting authorization service to delete token with jti %s ...", jti));
             return authorizationApiService
                     .deleteToken(jti)
                     .thenApply(authResponseDto -> null);

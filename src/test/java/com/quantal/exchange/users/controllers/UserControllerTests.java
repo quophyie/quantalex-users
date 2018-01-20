@@ -1,26 +1,34 @@
 package com.quantal.exchange.users.controllers;
 
+import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvice;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.exceptions.AlreadyExistsException;
+import com.quantal.exchange.users.exceptions.NotFoundException;
+import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.facades.UserManagementFacade;
+import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.ResponseMessageDto;
+import com.quantal.javashared.logger.QuantalLogger;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.TestUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -33,8 +41,14 @@ import static net.javacrumbs.jsonunit.spring.JsonUnitResultMatchers.json;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -45,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(value = UserController.class, secure = false)
 //@ContextConfiguration(classes={WebStartupConfig.class, WebSecurityConfig.class})
 //@DataJpaTest
-//@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT/*, classes = UsersApplication.class*/)
+//@SpringBootTest(/*webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT/*, classes = UsersApplication.class*/)
 public class UserControllerTests {
 
     private String persistedUserFirstName = "updatedUserFirstName";
@@ -57,7 +71,7 @@ public class UserControllerTests {
     private Gender persistedUserGender = Gender.M;
 
     private Long userId = 1L;
-    @Autowired
+   // @Autowired
     private MockMvc mvc;
 
     private UserController userController;
@@ -77,8 +91,12 @@ public class UserControllerTests {
     public void setUp() {
 
         userController = new UserController(userManagementFacade, null);
+        QuantalLogger logger = QuantalLoggerFactory.getLogger(UserController.class, new CommonLogFields());
+        ReflectionTestUtils.setField(userController, "logger", logger);
+        ExceptionHandlerCotrollerAdvice exceptionHandlerCotrollerAdvice = new ExceptionHandlerCotrollerAdvice(messageService);
+        ReflectionTestUtils.setField(exceptionHandlerCotrollerAdvice, "logger", logger);
         mvc=  MockMvcBuilders.standaloneSetup(userController)
-                .setControllerAdvice(new ExceptionHandlerCotrollerAdvice(messageService)).build();
+                .setControllerAdvice(exceptionHandlerCotrollerAdvice).build();
     }
 
     @Test
@@ -321,6 +339,7 @@ public class UserControllerTests {
 
         ResponseEntity response = new ResponseEntity(new ResponseMessageDto("OK", 200), HttpStatus.OK);
 
+
         given(this.userManagementFacade.requestPasswordReset(userDto.getEmail()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
@@ -354,7 +373,7 @@ public class UserControllerTests {
         userDto.setPassword("newPassword");
         userDto.setEmail("user@quanta.com");
 
-        String jwt = "jwt|_token";
+        String jwt = "jwt_token";
         TokenDto tokenDto = new TokenDto();
         tokenDto.setToken(jwt);
 
@@ -383,6 +402,132 @@ public class UserControllerTests {
                                 .isEqualTo(tokenDto.getToken()));
 
         verify(userManagementFacade).resetPassword(userDto);
+    }
+
+    @Test
+    public void shouldReturn400BadRequestByControllerAdviceWhenNullPointerExceptionThrown() throws Exception {
+
+        LocalDate dob = LocalDate.of(1990, 01, 01);
+
+        String errMsg = "data provided cannot be null";
+        UserDto createdUserDto = UserTestUtil.createApiGatewayUserDto(null,
+                persistedUserFirstName,
+                persistedUserLasttName,
+                persistedUserEmail,
+                persistedUserPassword,
+                persistedUserGender,
+                null);
+        createdUserDto.setConfirmedPassword(persistedUserPassword);
+
+        given(userManagementFacade.save(createdUserDto))
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture completableFuture = new CompletableFuture();
+                    completableFuture.completeExceptionally(new NullPointerException(errMsg));
+                    return completableFuture;
+                });
+
+        MvcResult asyscResult = this.mvc.perform(post("/users/")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(TestUtil.convertObjectToJsonString(createdUserDto)))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyscResult))
+                .andExpect(status().isBadRequest());
+        verify(userManagementFacade, times(1)).save(eq(createdUserDto));
+    }
+
+    @Test
+    public void shouldReturn409ConflictGivenAUserThatAlreadyExists() throws Exception {
+
+        String persistedModelFirstName = "createdUserFirstName";
+        String persistedModelLastName = "createdUserLastName";
+        String persistedModelEmail = "createdUser@quant.com";
+        String persistedModelPassword = "createdUserPassword";
+        LocalDate dob = LocalDate.of(1990, 01, 01);
+
+        String errMsg = String.format("user with email %s already exists", persistedModelEmail);
+
+
+        UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
+                persistedModelFirstName,
+                persistedModelLastName,
+                persistedModelEmail,
+                persistedModelPassword,
+                Gender.M, null);
+        createUserDto.setConfirmedPassword(persistedModelPassword);
+
+        given(this.userManagementFacade
+                .save(createUserDto))
+                .willAnswer(invocationOnMock -> {
+                    CompletableFuture future = new CompletableFuture();
+                    future.completeExceptionally(new AlreadyExistsException(errMsg));
+                    return future;
+                });
+
+        String content = TestUtil.convertObjectToJsonString(createUserDto);
+        MvcResult asyscResult = this.mvc.perform(post("/users/")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(content))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyscResult))
+                .andExpect(status().isConflict());
+
+        verify(userManagementFacade, times(1)).save(eq(createUserDto));
+    }
+
+    @Test
+    public void shouldReturn400BadRequestGivenInvalidPasswordOnPasswordReset () throws Exception {
+
+
+        UserDto userDto = new UserDto();
+        userDto.setEmail(persistedUserEmail);
+        userDto.setPassword(persistedUserPassword);
+        userDto.setConfirmedPassword(persistedConfirmedUserPassword);
+
+
+        given(userManagementFacade.resetPassword(userDto )).willAnswer(invocation -> {
+            CompletableFuture completableFuture = new CompletableFuture();
+            completableFuture.completeExceptionally(new PasswordValidationException("password exception"));
+            return completableFuture;
+        });
+        String content = TestUtil.convertObjectToJsonString(userDto);
+        MvcResult asyscResult = this.mvc.perform(post("/users/reset-password")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(content))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyscResult))
+                .andExpect(status().isBadRequest());
+
+        verify(userManagementFacade).resetPassword(userDto );
+
+
+    }
+
+    @Test
+    public void should404NotFoundGiveninvalidUserIdOnDelete() throws Exception {
+        String errMsg = "User not found";
+
+        Long userToDelId = 2L;
+        given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[] {User.class.getSimpleName()})).willReturn(errMsg);
+
+        given(userManagementFacade.deleteByUserId(userToDelId)).willAnswer(invocationOnMock -> {
+            CompletableFuture<Void> future = new CompletableFuture();
+            future.completeExceptionally(new NotFoundException(""));
+            return future;
+        });
+
+
+        MvcResult asyscResult = this.mvc.perform(delete("/users/{userId}", userToDelId)
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andReturn();
+
+        mvc.perform(asyncDispatch(asyscResult))
+                .andExpect(status().isNotFound());
+
+        verify(userManagementFacade).deleteByUserId(userToDelId);
+
     }
 
 

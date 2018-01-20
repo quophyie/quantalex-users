@@ -101,7 +101,8 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .createUser(userToCreate)
                 .thenApply(created -> {
                     nullSkippingMapper.map(created, createdDto);
-                    logger.debug("created user: user ", userDto);
+                    logger.with(EVENT_KEY, Events.USER_CREATE)
+                            .debug("created user: user ", userDto);
                     return createdDto;
                 })
               .thenApply(user -> authorizationApiService.requestUserCredentials(authRequestDto))

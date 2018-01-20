@@ -15,7 +15,7 @@
 		<groupId>com.github.quophyie</groupId>
 		<artifactId>microservicebasepom</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<!--<relativePath/>--> <!-- lookup parent from repository -->
 	</parent>
 
 	<!--<parent>
@@ -67,7 +67,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>RELEASE</version>
+			<scope>test</scope>
         </dependency>
 
 		<dependency>
@@ -151,17 +151,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
-		</dependency>-->
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-		</dependency>
+		</dependency>-->
 	</dependencies>
 
 	<build>
-		<sourceDirectory>${project.build.directory}/generated-sources/delombok</sourceDirectory>
+		<!--<sourceDirectory>${project.build.directory}/generated-sources/delombok</sourceDirectory> -->
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
@@ -170,7 +170,7 @@
 		</resources>
 		<pluginManagement>
 			<plugins>
-				<plugin>
+				<!--<plugin>
 					<groupId>org.projectlombok</groupId>
 					<artifactId>lombok-maven-plugin</artifactId>
 					<version>1.16.16.0</version>
@@ -186,7 +186,7 @@
 						<addOutputDirectory>false</addOutputDirectory>
 						<sourceDirectory>src/main/java</sourceDirectory>
 					</configuration>
-				</plugin>
+				</plugin>-->
 <!--
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>

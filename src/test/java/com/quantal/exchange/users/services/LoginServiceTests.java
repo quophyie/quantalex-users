@@ -3,7 +3,9 @@ package com.quantal.exchange.users.services;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialsListResponseDto;
+import com.quantal.exchange.users.dto.AuthRequestDto;
 import com.quantal.exchange.users.dto.AuthResponseDto;
+import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
@@ -17,9 +19,11 @@ import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
 import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -30,10 +34,11 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;;
+import static org.mockito.Mockito.verify;
 
 
 /**
@@ -81,7 +86,8 @@ public class LoginServiceTests {
                         LocalDate.of(1981, 01, 01)
 
                         );
-
+        ReflectionTestUtils.setField(loginService, "logger", QuantalLoggerFactory.getLogger(LoginService.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(loginService, "taskExecutor", Executors.newSingleThreadExecutor());
         ReflectionTestUtils.setField(loginService, "JWT_SECRET", "secret");
     }
 
@@ -133,34 +139,30 @@ public class LoginServiceTests {
     @Test
     public void shouldReturnJwtGivenValidEmailAndPassword() throws ExecutionException, InterruptedException {
 
-        String apiJwtCredentuakKey = "key";
         String jwt = "jwt_token";
+        AuthRequestDto authRequestDto = new AuthRequestDto();
+        authRequestDto.setEmail(email);
         given(userService.findOneByEmail(email))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
 
-        given(userService.createJwt(apiJwtCredentuakKey))
-                .willAnswer(invocationOnMock -> jwt);
-
         given(passwordService.checkPassword(password, hashedPassword)).willReturn(true);
+       given( authorizationApiService.requestToken(authRequestDto))
+               .willAnswer(invocationOnMock -> {
+                   TokenDto tokenDto = new TokenDto();
+                   tokenDto.setToken(jwt);
+                   return CompletableFuture.completedFuture(tokenDto);
+               });
 
-        given(apiGatewayService.getConsumerJwtCredentials(email))
-                .willAnswer(invocationOnMock -> {
-                    ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
-                    ApiJwtUserCredentialsListResponseDto jwtUserCredentialListResponseDto = new ApiJwtUserCredentialsListResponseDto();
-                    jwtUserCredentialResponseDto.setKey(apiJwtCredentuakKey);
-                    jwtUserCredentialListResponseDto.setData(Arrays.asList(jwtUserCredentialResponseDto));
-                    return CompletableFuture.completedFuture(jwtUserCredentialListResponseDto);
-                });
         String result = loginService.login(email, password).get();
         assertThat(result).isEqualToIgnoringCase(jwt);
         verify(passwordService).checkPassword(password, hashedPassword);
         verify(userService).findOneByEmail(email);
-        verify(userService).createJwt(apiJwtCredentuakKey);
-        verify(apiGatewayService).getConsumerJwtCredentials(email);
+        verify(authorizationApiService).requestToken(authRequestDto);
 
     }
 
     @Test
+    @Ignore
     public void shouldThrowInvalidDataExceptionGivenEmptyCredentialKey() throws ExecutionException, InterruptedException {
 
         String apiJwtCredentuakKey = null;

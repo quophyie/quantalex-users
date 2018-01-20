@@ -6,6 +6,8 @@ import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.UserService;
+import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
@@ -17,9 +19,11 @@ import org.mockito.Mock;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -56,6 +60,8 @@ public class LoginFacadeTests {
              messageService,
              loginService);
 
+        ReflectionTestUtils.setField(loginFacade, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(loginFacade, "taskExecutor", Executors.newSingleThreadExecutor());
         loginDto = new LoginDto();
 
     }
@@ -92,7 +98,7 @@ public class LoginFacadeTests {
         given(loginService.login(email, password))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
-                    future.completeExceptionally(new NotFoundException(null));
+                    future.completeExceptionally(new NotFoundException(""));
                     return future;
                 });
 
