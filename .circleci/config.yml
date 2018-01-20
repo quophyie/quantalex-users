@@ -16,7 +16,7 @@ jobs:
 
       - run: mvn dependency:go-offline
 
-      - run: mkdir -P /var/log
+      - run: mkdir -p /var/log
 
       - save_cache:
           paths:
