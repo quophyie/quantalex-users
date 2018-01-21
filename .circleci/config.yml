@@ -17,6 +17,7 @@ jobs:
       - run: mvn dependency:go-offline
 
       - run: mkdir -p /var/log
+      - run: touch /var/log/springboot_log.log /var/log/app_log.log /var/log/app_log.json && chmod 777 /var/log/springboot_log.log /var/log/app_log.log /var/log/app_log.json
 
       - save_cache:
           paths:
