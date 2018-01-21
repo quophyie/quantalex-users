@@ -72,7 +72,7 @@ import static org.mockito.Mockito.verify;
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "DB_HOST=localhost",
-        "DB_PORT=5433",
+        "DB_PORT=5432",
         "API_GATEWAY_ENDPOINT=http://localhost"
 
 })
