@@ -1,14 +1,23 @@
 package com.quantal.exchange.users.services.api;
 
-import com.quantal.exchange.users.dto.*;
-import retrofit2.http.*;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.dto.AuthRequestDto;
+import com.quantal.exchange.users.dto.AuthResponseDto;
+import com.quantal.exchange.users.dto.TokenDto;
+import com.quantal.javashared.annotations.requestheaders.EnforceRequiredHeaders;
+import retrofit2.http.Body;
+import retrofit2.http.DELETE;
+import retrofit2.http.Headers;
+import retrofit2.http.POST;
+import retrofit2.http.Path;
 
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by root on 11/06/2017.
  */
-public interface AuthorizationApiService {
+@EnforceRequiredHeaders
+public interface AuthorizationApiService{
 
     @DELETE("/user/token/one/{jti}")
     @Headers({"Content-Type: application/json"})

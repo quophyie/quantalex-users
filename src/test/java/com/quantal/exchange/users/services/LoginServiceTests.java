@@ -6,7 +6,7 @@ import com.quantal.exchange.users.dto.ApiJwtUserCredentialsListResponseDto;
 import com.quantal.exchange.users.dto.AuthRequestDto;
 import com.quantal.exchange.users.dto.AuthResponseDto;
 import com.quantal.exchange.users.dto.TokenDto;
-import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
@@ -19,6 +19,7 @@ import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
 import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
@@ -27,6 +28,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -66,6 +68,9 @@ public class LoginServiceTests {
     @Mock
     private AuthorizationApiService authorizationApiService;
 
+    @Mock
+    private MDCAdapter mdcAdapter;
+
     private User user;
 
     private  String email = "testemail@quantal.com";
@@ -82,11 +87,11 @@ public class LoginServiceTests {
                         "testlastname",
                         email,
                         hashedPassword,
-                        Gender.M,
+                        GenderEnum.M,
                         LocalDate.of(1981, 01, 01)
 
                         );
-        ReflectionTestUtils.setField(loginService, "logger", QuantalLoggerFactory.getLogger(LoginService.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(loginService, "logger", QuantalLoggerFactory.getLogger(LoginService.class, new LoggerConfig()));
         ReflectionTestUtils.setField(loginService, "taskExecutor", Executors.newSingleThreadExecutor());
         ReflectionTestUtils.setField(loginService, "JWT_SECRET", "secret");
     }
@@ -99,38 +104,38 @@ public class LoginServiceTests {
         String[] replacements = new String[]{User.class.getSimpleName()};
         given(messageService.getMessage(MessageCodes.NOT_FOUND, replacements))
                 .willReturn(errMessage);
-        given(userService.findOneByEmail(email))
+        given(userService.findOneByEmail(email, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(null));
 
         try {
-            loginService.login(email, password).get();
+            loginService.login(email, password, mdcAdapter).get();
         } catch (Exception ex){
             RuntimeException busEx = CommonUtils.extractBusinessException(ex);
             assertThat(busEx).isInstanceOf(NotFoundException.class);
 
             verify(messageService).getMessage(MessageCodes.NOT_FOUND, replacements);
-            verify(userService).findOneByEmail(email);
+            verify(userService).findOneByEmail(email, mdcAdapter);
 
         }
     }
 
     @Test
     public void shouldThrowPasswordValidationExceptionGivenInvalidPassword() throws ExecutionException, InterruptedException {
-        String invalidUserErrMsg = "invalid email or password";
+        String invalidUserErrMsg = "invalid to or password";
         String email = "notfoud@quantal.com";
         String password = "Password";
-        given(userService.findOneByEmail(email))
+        given(userService.findOneByEmail(email, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
 
 
         given(passwordService.checkPassword(password, hashedPassword)).willReturn(false);
 
         try {
-            loginService.login(email, password).get();
+            loginService.login(email, password, mdcAdapter).get();
         } catch (Exception ex){
             RuntimeException busEx = CommonUtils.extractBusinessException(ex);
             assertThat(busEx).isInstanceOf(PasswordValidationException.class);
-            verify(userService).findOneByEmail(email);
+            verify(userService).findOneByEmail(email, mdcAdapter);
             verify(passwordService).checkPassword(password, hashedPassword);
 
         }
@@ -142,22 +147,22 @@ public class LoginServiceTests {
         String jwt = "jwt_token";
         AuthRequestDto authRequestDto = new AuthRequestDto();
         authRequestDto.setEmail(email);
-        given(userService.findOneByEmail(email))
+        given(userService.findOneByEmail(email, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
 
         given(passwordService.checkPassword(password, hashedPassword)).willReturn(true);
-       given( authorizationApiService.requestToken(authRequestDto))
+       given( authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
                .willAnswer(invocationOnMock -> {
                    TokenDto tokenDto = new TokenDto();
                    tokenDto.setToken(jwt);
                    return CompletableFuture.completedFuture(tokenDto);
                });
 
-        String result = loginService.login(email, password).get();
+        String result = loginService.login(email, password, mdcAdapter).get();
         assertThat(result).isEqualToIgnoringCase(jwt);
         verify(passwordService).checkPassword(password, hashedPassword);
-        verify(userService).findOneByEmail(email);
-        verify(authorizationApiService).requestToken(authRequestDto);
+        verify(userService).findOneByEmail(email, mdcAdapter);
+        verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
 
     }
 
@@ -166,7 +171,7 @@ public class LoginServiceTests {
     public void shouldThrowInvalidDataExceptionGivenEmptyCredentialKey() throws ExecutionException, InterruptedException {
 
         String apiJwtCredentuakKey = null;
-        given(userService.findOneByEmail(email))
+        given(userService.findOneByEmail(email, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
 
 
@@ -181,12 +186,12 @@ public class LoginServiceTests {
                     return CompletableFuture.completedFuture(jwtUserCredentialListResponseDto);
                 });
         try {
-            loginService.login(email, password).get();
+            loginService.login(email, password, mdcAdapter).get();
         } catch (Exception ex) {
             RuntimeException busEx = CommonUtils.extractBusinessException(ex);
             assertThat(busEx).isInstanceOf(InvalidDataException.class);
             verify(passwordService).checkPassword(password, hashedPassword);
-            verify(userService).findOneByEmail(email);
+            verify(userService).findOneByEmail(email, mdcAdapter);
             verify(apiGatewayService).getConsumerJwtCredentials(email);
         }
 

@@ -18,6 +18,8 @@ import com.quantal.javashared.services.interfaces.MessageService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureException;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.MDC;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -70,13 +72,13 @@ public class LoginServiceImpl implements LoginService {
 
     @Override
     //@Async
-    public CompletableFuture<String> login(String email, String password) {
+    public CompletableFuture<String> login(String email, String password, MDCAdapter mdcAdapter) {
 
         Map<String, Object> map = new HashMap<>();
-        map.put("email", email);
+        map.put("to", email);
 
-       logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
-       return userService.findOneByEmail(email)
+       logger.with("to", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
+       return userService.findOneByEmail(email, mdcAdapter)
                 .thenApplyAsync(user -> {
                     if (user == null) {
                         String message = String.format(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
@@ -84,7 +86,7 @@ public class LoginServiceImpl implements LoginService {
                         throw logger.throwing(new NotFoundException(message));
                     }
 
-                    logger.with("email", email)
+                    logger.with("to", email)
                           .with("user", user)
                           .info(String.format("found user identified by %s",email), new LogEvent("LOGGING_IN"));
                     return user;
@@ -94,11 +96,11 @@ public class LoginServiceImpl implements LoginService {
                        throw logger.throwing(new PasswordValidationException(""));
                    }
 
-                   logger.with("email", email)
+                   logger.with("to", email)
                          .debug(String.format("Requesting login token for %s ... ", email), new LogEvent("LOGGING_IN"));
                    AuthRequestDto authRequestDto = new AuthRequestDto();
                    authRequestDto.setEmail(email);
-                   return authorizationApiService.requestToken(authRequestDto);
+                   return authorizationApiService.requestToken(authRequestDto,MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY) ,MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY));
                }, taskExecutor)
               // .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
                .thenCompose(tokenCompletableFuture -> tokenCompletableFuture)

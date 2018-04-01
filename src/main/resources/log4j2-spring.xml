@@ -7,8 +7,14 @@
         <!-- Example for logging into the build folder of your project -->
         <Property name="LOG_FILE" value="${BUILD_FOLDER:-build}/${springAppName}"/>​
 
-        <Property name="CONSOLE_LOG_PATTERN"
+        <Property name="CONSOLE_LOG_PATTERN_COLORED_WITH_TRACEID_AND_SPAN"
                   value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([${springAppName:-},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-B3-ParentSpanId:-},%X{X-Span-Export:-}]){yellow} %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+        <Property name="CONSOLE_LOG_PATTERN"
+                  value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"/>
+
+        <Property name="TRACEID_SPAN_LOG_PATTERN"
+                  value="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [%X{X-B3-TraceId},%X{X-B3-SpanId},%X{X-B3-ParentSpanId},%X{X-Span-Export}]- %msg%n"/>
+
     </Properties>
     <Appenders>
         <Console name="Console-Appender" target="SYSTEM_OUT">
@@ -16,16 +22,17 @@
                 <!--<pattern>
                     [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} - %msg%n
                 </pattern>-->
+                <!--<pattern>${TRACEID_SPAN_LOG_PATTERN}</pattern>-->
                 <!--<pattern>
                     [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [${springAppName:-},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-B3-ParentSpanId:-},%X{X-Span-Export:-}]]- %msg%n
                 </pattern>-->
-                <pattern>
+                <!--<pattern>
                     [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [traceId=%X{traceId}] %c{1} [%X{X-B3-TraceId},%X{X-B3-SpanId},%X{X-B3-ParentSpanId},%X{X-Span-Export}]- %msg%n
-                </pattern>
+                </pattern>-->
                 <!--<pattern>
                     %msg%n
                 </pattern>-->
-                <!--<pattern>${CONSOLE_LOG_PATTERN}</pattern>-->
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
             </PatternLayout>
         </Console>
         <File name="App-File-Appender" fileName="${log-path}/app_log.log" >
@@ -51,6 +58,10 @@
     <Loggers>
         <Logger name="org.springframework.web" level="info" additivity="false">
             <AppenderRef ref="SpringBoot-File-Appender"/>
+            <AppenderRef ref="Console-Appender"/>
+        </Logger>
+        <Logger name="org.flywaydb" level="debug" additivity="false">
+            <AppenderRef ref="App-File-Appender"/>
             <AppenderRef ref="Console-Appender"/>
         </Logger>
         <Logger name="com.quantal.exchange.users" level="debug" additivity="false">

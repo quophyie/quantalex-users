@@ -2,7 +2,7 @@ package com.quantal.exchange.users.services;
 
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
-import com.quantal.exchange.users.exceptions.InvalidDataException;
+import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
@@ -10,7 +10,6 @@ import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.enums.Gender;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.models.User;
@@ -26,12 +25,11 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.passay.CharacterRule;
 import org.passay.EnglishCharacterData;
 import org.passay.PasswordValidator;
 import org.passay.RuleResult;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -73,6 +71,9 @@ public class UserServiceTests {
     @Mock
     private PasswordService passwordService;
 
+    @Mock
+    private MDCAdapter mdcAdapter;
+
     private PasswordValidator passwordValidator;
 
     private String persistedModelFirstName =  "createdUserFirstName";
@@ -112,7 +113,7 @@ public class UserServiceTests {
 
         // When
         try {
-            userService.createUser(null).get();
+            userService.createUser(null, mdcAdapter).get();
         } catch (Throwable ex)
 
         {
@@ -132,17 +133,17 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         User result = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         String msgSvcMsg = "already exists";
-        String partialErrMsg = String.format("user with email %s ", userToSave.getEmail().toLowerCase());
+        String partialErrMsg = String.format("user with to %s ", userToSave.getEmail().toLowerCase());
         String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
         ApiGatewayUserRequestDto apiGatewayUserRequestDto = UserTestUtil.createApiGatewayUserDto(//null,
                 persistedModelEmail.trim().toLowerCase());
@@ -153,7 +154,7 @@ public class UserServiceTests {
         given(userRepository.findOneByEmail(userToSave.getEmail().toLowerCase())).willReturn(result);
         try {
             // When
-            CompletableFuture future = userService.createUser(userToSave);
+            CompletableFuture future = userService.createUser(userToSave, mdcAdapter);
             future.get();
 
         } catch (Throwable ex) {
@@ -178,7 +179,7 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 "Password@",
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
         RuleResult ruleResult = new RuleResult();
@@ -188,7 +189,7 @@ public class UserServiceTests {
 
         try {
             // When
-            CompletableFuture future = userService.createUser(userToSave);
+            CompletableFuture future = userService.createUser(userToSave, mdcAdapter);
 
             future.get();
         } catch (Throwable ex) {
@@ -212,14 +213,14 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 hashedPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         User createdUser = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 hashedPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
 
 
@@ -242,7 +243,7 @@ public class UserServiceTests {
         given(apiGatewayService.addUer(apiGatewayUserRequestDto)).willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
 
         // When
-        CompletableFuture completableFutureResult = userService.createUser(userToSave);
+        CompletableFuture completableFutureResult = userService.createUser(userToSave, mdcAdapter);
 
         // Get the result of the completable future
         User result = (User) completableFutureResult.get();
@@ -313,7 +314,7 @@ public class UserServiceTests {
                 "UpdatedUserLastName",
                 persistedModelEmail,
                 null,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
         given(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{userClassName})).willReturn(errMsg);
@@ -353,14 +354,14 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         User updatedUser = UserTestUtil.createUserModel(userId,
                 updatedUserFirstName,
                 updatedUserLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
         given(userRepository.findOne(userId))
@@ -401,7 +402,7 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
         given(userRepository.findOne(userId)).willReturn(persistedUser);
@@ -449,14 +450,14 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         User updatedUser = UserTestUtil.createUserModel(userId,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 updatedPasswordHash,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
         given(userRepository.findOne(userId)).willReturn(persistedUser);
@@ -503,10 +504,10 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         String msgSvcMsg = "already exists";
-        String partialErrMsg = String.format("user with email %s ", updateData.getEmail());
+        String partialErrMsg = String.format("user with to %s ", updateData.getEmail());
         String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
 
         // Then
@@ -547,7 +548,7 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
 
@@ -572,7 +573,7 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
 
@@ -580,7 +581,7 @@ public class UserServiceTests {
 
         // When
 
-        User result = userService.findOneByEmail(persistedModelEmail).get();
+        User result = userService.findOneByEmail(persistedModelEmail, mdcAdapter).get();
 
         // Then
 
@@ -633,14 +634,14 @@ public class UserServiceTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         User saveData = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         // Given
 

@@ -12,11 +12,17 @@ import com.quantal.javashared.jsonviews.DefaultJsonView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.MDC;
 
 import javax.validation.Valid;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+
+import static com.quantal.exchange.users.constants.Events.USER_PASSWORD_RESET_REQUEST;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 
 /**
  * Created by dman on 08/03/2017.
@@ -29,6 +35,8 @@ public class UserController extends BaseControllerAsync {
   private UserManagementFacade userManagementFacade;
 
   private ObjectMapper objectMapper;
+  @Autowired
+  private ExecutorService taskExecutor;
 
   @Autowired
   public UserController(UserManagementFacade userManagementFacade,
@@ -43,7 +51,7 @@ public class UserController extends BaseControllerAsync {
                                                       @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
                                                        UserDto userDto){
     return userManagementFacade
-            .save(userDto)
+            .save(userDto, MDC.getMDCAdapter())
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
   }
 
@@ -71,10 +79,12 @@ public class UserController extends BaseControllerAsync {
   }
 
   @PostMapping(value="/forgotten-password")
+  //@Async
   public CompletableFuture<?> forgottenPassword(@RequestBody
                                                  @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
                                                           UserDto userDto){
-    return userManagementFacade.requestPasswordReset(userDto.getEmail())
+    MDC.put(EVENT_KEY,USER_PASSWORD_RESET_REQUEST);
+    return userManagementFacade.requestPasswordReset(userDto.getEmail(), MDC.getMDCAdapter())
             .thenApply( responseEntity -> applyJsonView(responseEntity, DefaultJsonView.ResponseDtoView.class, objectMapper));
   }
 

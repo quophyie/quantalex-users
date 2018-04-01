@@ -14,6 +14,7 @@ import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,12 +60,12 @@ public class LoginFacade extends AbstractBaseFacade {
     }
 
     //@Async
-    public CompletableFuture<ResponseEntity> login(LoginDto loginDto){
+    public CompletableFuture<ResponseEntity> login(LoginDto loginDto, MDCAdapter mdcAdapter){
         String email = loginDto != null ? loginDto.getEmail() : "";
 
-        logger.with(EMAIL_KEY, "email")
+        logger.with(EMAIL_KEY, "to")
               .with(EVENT_KEY, "LOGIN")
-              .debug(String.format("Logging in user with email: %s", email));
+              .debug(String.format("Logging in user with to: %s", email));
 
         if (loginDto == null) {
             String msg = messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED);
@@ -76,7 +77,7 @@ public class LoginFacade extends AbstractBaseFacade {
             return CompletableFuture.completedFuture(responseEntity);
         }
 
-        return loginService.login(loginDto.getEmail(), loginDto.getPassword())
+        return loginService.login(loginDto.getEmail(), loginDto.getPassword(), mdcAdapter)
                 .thenApplyAsync(token -> {
                     TokenDto tokenDto = new TokenDto();
                     tokenDto.setToken(token);

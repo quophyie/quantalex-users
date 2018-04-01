@@ -1,8 +1,8 @@
 package com.quantal.exchange.users.dto;
 
 import com.fasterxml.jackson.annotation.JsonView;
-import com.quantal.exchange.users.enums.Gender;
-import com.quantal.exchange.users.enums.UserStatus;
+import com.quantal.exchange.users.enums.GenderEnum;
+import com.quantal.exchange.users.enums.UserStatusEnum;
 import com.quantal.exchange.users.jsonviews.UserViews;
 import com.quantal.exchange.users.validators.email.ValidEmail;
 import com.quantal.exchange.users.validators.password.PasswordMatches;
@@ -41,9 +41,9 @@ public class UserDto {
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
   private Long companyId;
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
-  private Gender gender;
+  private GenderEnum gender;
   @JsonView(UserViews.CreatedAndUpdatedUserView.class)
-  private UserStatus status;
+  private UserStatusEnum status;
 
   private String apiUserId;
 

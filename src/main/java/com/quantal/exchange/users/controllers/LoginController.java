@@ -5,6 +5,7 @@ import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.facades.LoginFacade;
 import com.quantal.exchange.users.jsonviews.LoginView;
 import com.quantal.javashared.controller.BaseControllerAsync;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +32,7 @@ public class LoginController extends BaseControllerAsync{
 
     @PostMapping(value = "/login/", consumes = MediaType.APPLICATION_JSON_VALUE)
     public CompletableFuture<ResponseEntity<?>> login(@RequestBody LoginDto loginDto){
-        return loginFacade.login(loginDto)
+        return loginFacade.login(loginDto, MDC.getMDCAdapter())
                 .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));
     }
 

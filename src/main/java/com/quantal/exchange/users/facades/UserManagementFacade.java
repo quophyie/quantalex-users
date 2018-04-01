@@ -1,47 +1,47 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.exchange.users.constants.EmailTemplates;
 import com.quantal.exchange.users.constants.Events;
+import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.AuthRequestDto;
 import com.quantal.exchange.users.dto.EmailRequestDto;
-import com.quantal.exchange.users.enums.EmailType;
+import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.TokenType;
+import com.quantal.exchange.users.exceptions.AlreadyExistsException;
+import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
+import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.api.EmailApiService;
+import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
+import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.dto.ResponseDto;
 import com.quantal.javashared.facades.AbstractBaseFacade;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
-import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.dto.UserDto;
-import com.quantal.exchange.users.exceptions.AlreadyExistsException;
-import com.quantal.exchange.users.exceptions.NotFoundException;
-import com.quantal.exchange.users.models.User;
-import com.quantal.exchange.users.services.api.GiphyApiService;
-import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.util.CommonUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.passay.RuleResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.ext.XLogger;
-import org.slf4j.ext.XLoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import retrofit2.HttpException;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import static com.quantal.javashared.constants.CommonConstants.EMAIL_KEY;
 import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 import static com.quantal.javashared.constants.CommonConstants.STATUS_CODE_KEY;
+import static com.quantal.javashared.constants.CommonConstants.SUB_EVENT_KEY;
 import static com.quantal.javashared.constants.CommonConstants.USER_ID_KEY;
 import static com.quantal.javashared.constants.CommonConstants.USER_KEY;
 
@@ -58,12 +58,16 @@ public class UserManagementFacade extends AbstractBaseFacade {
   private final AuthorizationApiService authorizationApiService;
   private final EmailApiService emailApiService;
   private final PasswordService passwordService;
+  @Autowired
+  private ExecutorService taskExecutor;
 
-  //private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
+
+    //private final XLogger logger = XLoggerFactory.getXLogger(this.getClass().getName());
   @InjectLogger
   private QuantalLogger logger;
 
   @Autowired
+
   public UserManagementFacade(UserService userService,
                               GiphyApiService giphyApiService,
                               MessageService messageService,
@@ -88,9 +92,10 @@ public class UserManagementFacade extends AbstractBaseFacade {
        return  userDto;
   }
 
-  public CompletableFuture<ResponseEntity> save(UserDto userDto){
+  public CompletableFuture<ResponseEntity> save(UserDto userDto, MDCAdapter mdcAdapter){
       User userToCreate = toModel(userDto, User.class);
       UserDto createdDto = new UserDto();
+      final ResponseEntity[] responseEntity = new ResponseEntity[1];
 
       logger.with(USER_KEY, userDto)
             .with(EVENT_KEY, Events.USER_CREATE)
@@ -98,7 +103,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
       AuthRequestDto authRequestDto = new AuthRequestDto();
       authRequestDto.setEmail(userDto.getEmail());
        return userService
-                .createUser(userToCreate)
+                .createUser(userToCreate, mdcAdapter)
                 .thenApply(created -> {
                     nullSkippingMapper.map(created, createdDto);
                     logger.with(EVENT_KEY, Events.USER_CREATE)
@@ -107,13 +112,20 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 })
               .thenApply(user -> authorizationApiService.requestUserCredentials(authRequestDto))
               .thenCompose(res -> res)
-              .thenApply(credential -> authorizationApiService.requestToken(authRequestDto))
+              .thenApply(credential -> authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
               .thenCompose(res -> res)
               .thenApply(token -> {
                   createdDto.setToken(token.getToken());
-                  ResponseEntity responseEntity = toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
-                  return responseEntity;
-              });
+                   responseEntity[0] = toRESTResponse(createdDto, messageService.getMessage(MessageCodes.ENTITY_CREATED, new String[]{User.class.getSimpleName()}), HttpStatus.CREATED);
+                  return responseEntity[0];
+              })
+              .thenApply(responseEnt -> {
+                EmailRequestDto emailDetails = new EmailRequestDto();
+                emailDetails.setTo(userDto.getEmail());
+               return emailApiService.sendEmailByTemplate(EmailTemplates.NEW_USER_TEMPLATE,emailDetails);
+              })
+               .thenCompose(emailResponseDtoCompletableFuture -> emailResponseDtoCompletableFuture)
+               .thenApply(emailResponseDto ->  responseEntity[0]);
 
   }
 
@@ -189,7 +201,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                     });
     }
 
-    public CompletableFuture<ResponseEntity> requestPasswordReset(String email){
+    public CompletableFuture<ResponseEntity> requestPasswordReset(String email, MDCAdapter mdcAdapter){
 
         if (StringUtils.isEmpty(email)) {
             ResponseEntity responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{email}), HttpStatus.BAD_REQUEST);
@@ -199,32 +211,33 @@ public class UserManagementFacade extends AbstractBaseFacade {
         AuthRequestDto authRequestDto = new AuthRequestDto();
         authRequestDto.setTokenType(TokenType.PasswordReset);
         authRequestDto.setEmail(email);
-        logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
+
+        logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
                 .with(EMAIL_KEY, email)
                 .debug("requesting password reset token for {} ...", email);
-           return userService.findOneByEmail(email)
-                   .thenApply(user -> authorizationApiService.requestToken(authRequestDto))
+           return userService.findOneByEmail(email, mdcAdapter)
+                   .thenApply(user -> authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
                    .thenCompose(tokenDto -> tokenDto)
                    .thenCompose(tokenDto -> {
-                       logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
+                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
                                .with(EMAIL_KEY, email)
                                .with("token", tokenDto.getToken())
                                .debug("token request success: token:  {} ", tokenDto.getToken());
                        EmailRequestDto emailRequestDto = new EmailRequestDto();
-                       emailRequestDto.setEmail(email);
-                       emailRequestDto.setToken(tokenDto.getToken());
-                       emailRequestDto.setEmailType(EmailType.PasswordReset);
+                       emailRequestDto.setTo(email);
+                       //emailRequestDto.setToken(tokenDto.getToken());
+                       //emailRequestDto.setEmailType(EmailType.PasswordReset);
 
-                       logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
+                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
                                .with(EMAIL_KEY, email)
-                               .debug("sending password reset email to {}", email);
-                       return emailApiService.sendEmail(emailRequestDto);
+                               .debug("sending password reset to to {}", email);
+                       return emailApiService.sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto);
                    })
                    .thenApply(emailResponseDto -> {
                     String message = messageService.getMessage(MessageCodes.SUCCESS);
-                    logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
+                    logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
                             .with(EMAIL_KEY, email)
-                            .debug("password reset email sent to {} successfully", email);
+                            .debug("password reset to sent to {} successfully", email);
                     ResponseEntity responseEntity = toRESTResponse(null, message);
                     return responseEntity;
                    })
@@ -241,7 +254,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .with(EMAIL_KEY,  userDto.getEmail())
                 .debug("resetting password for {}", userDto.getEmail());
         if (StringUtils.isEmpty(userDto.getEmail()) || StringUtils.isEmpty(userDto.getPassword())){
-            String message =  messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{"email or password"});
+            String message =  messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, new String[]{"to or password"});
             ResponseEntity responseEntity = toRESTResponse(null,message, HttpStatus.BAD_REQUEST);
             logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                     .debug(message);
@@ -271,7 +284,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .debug("finding user identified by {}", userDto.getEmail());
 
         return userService.
-                findOneByEmail(userDto.getEmail())
+                findOneByEmail(userDto.getEmail(), MDC.getMDCAdapter())
                 .thenApply(user -> {
                     if(user == null){
                       throw logger.throwing(new NotFoundException(""));
@@ -302,7 +315,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                     logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                             .with(EMAIL_KEY,  userDto.getEmail())
                             .debug("requesting new access token for user identified by {}", userDto.getEmail());
-                    return authorizationApiService.requestToken(authRequestDto);
+                    return authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
                 })
                 .thenCompose(tokenDtoCompletableFuture -> tokenDtoCompletableFuture)
                 .thenApply(tokenDto -> {
@@ -328,7 +341,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                         logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                                 .with(STATUS_CODE_KEY, HttpStatus.NOT_FOUND)
                                 .with(EMAIL_KEY,  userDto.getEmail())
-                                .debug(message+". user email: {}  -  HttpCode: {}", userDto.getEmail(), HttpStatus.NOT_FOUND);
+                                .debug(message+". user to: {}  -  HttpCode: {}", userDto.getEmail(), HttpStatus.NOT_FOUND);
                         return responseEntity;
                     }
                     logger.debug("Error resetting user password. ", ex);

@@ -10,7 +10,8 @@ import lombok.Data;
 @Data
 public class EmailRequestDto {
 
-    private String email;
+    private String to;
     private EmailType emailType;
     private String  token;
+    private String templateName;
 }

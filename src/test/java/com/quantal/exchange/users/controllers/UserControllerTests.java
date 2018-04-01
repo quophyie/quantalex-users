@@ -1,10 +1,10 @@
 package com.quantal.exchange.users.controllers;
 
 import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvice;
+import com.quantal.exchange.users.controlleradvice.ExceptionHandlerControllerAdvice;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.dto.UserDto;
-import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
@@ -12,7 +12,7 @@ import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
-import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.ResponseMessageDto;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
@@ -22,6 +22,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
@@ -68,7 +70,7 @@ public class UserControllerTests {
     private String persistedUserPassword = "persistedUserPassword";
     private String persistedConfirmedUserPassword = "persistedUserPassword";
     private LocalDate persistedUserDob = LocalDate.of(1980, 1, 1);
-    private Gender persistedUserGender = Gender.M;
+    private GenderEnum persistedUserGenderEnum = GenderEnum.M;
 
     private Long userId = 1L;
    // @Autowired
@@ -85,18 +87,19 @@ public class UserControllerTests {
     @MockBean
     private MessageService messageService;
 
-
+    @Mock
+    private MDCAdapter mdcAdapter;
 
     @Before
     public void setUp() {
 
         userController = new UserController(userManagementFacade, null);
-        QuantalLogger logger = QuantalLoggerFactory.getLogger(UserController.class, new CommonLogFields());
+        QuantalLogger logger = QuantalLoggerFactory.getLogger(UserController.class, new LoggerConfig());
         ReflectionTestUtils.setField(userController, "logger", logger);
-        ExceptionHandlerCotrollerAdvice exceptionHandlerCotrollerAdvice = new ExceptionHandlerCotrollerAdvice(messageService);
-        ReflectionTestUtils.setField(exceptionHandlerCotrollerAdvice, "logger", logger);
+        ExceptionHandlerControllerAdvice exceptionHandlerControllerAdvice = new ExceptionHandlerControllerAdvice(messageService);
+        ReflectionTestUtils.setField(exceptionHandlerControllerAdvice, "logger", logger);
         mvc=  MockMvcBuilders.standaloneSetup(userController)
-                .setControllerAdvice(exceptionHandlerCotrollerAdvice).build();
+                .setControllerAdvice(exceptionHandlerControllerAdvice).build();
     }
 
     @Test
@@ -143,7 +146,7 @@ public class UserControllerTests {
                 updatedUserLastName,
                 persistedUserEmail,
                 persistedUserPassword,
-                persistedUserGender,
+                persistedUserGenderEnum,
                 persistedUserDob);
 
         ResponseEntity response = new ResponseEntity(updatedUser, HttpStatus.OK);
@@ -176,12 +179,12 @@ public class UserControllerTests {
                                 .isEqualTo(updatedUserLastName))
                 .andExpect(
                         json()
-                                .node("email")
+                                .node("to")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
                                 .node("gender")
-                                .isEqualTo(persistedUserGender));
+                                .isEqualTo(persistedUserGenderEnum));
 
         verify(userManagementFacade).updateUser(userId,updateData);
     }
@@ -194,7 +197,7 @@ public class UserControllerTests {
                 persistedUserLasttName,
                 persistedUserEmail,
                 persistedUserPassword,
-                persistedUserGender,
+                persistedUserGenderEnum,
                 persistedUserDob);
 
         ResponseEntity response = new ResponseEntity(userDto, HttpStatus.OK);
@@ -222,12 +225,12 @@ public class UserControllerTests {
                                 .isEqualTo(persistedUserLasttName))
                 .andExpect(
                         json()
-                                .node("email")
+                                .node("to")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
                                 .node("gender")
-                                .isEqualTo(persistedUserGender));
+                                .isEqualTo(persistedUserGenderEnum));
 
         verify(userManagementFacade).findUserById(userId);
     }
@@ -269,7 +272,7 @@ public class UserControllerTests {
                 persistedUserLasttName,
                 persistedUserEmail,
                 persistedUserPassword,
-                persistedUserGender,
+                persistedUserGenderEnum,
                 null);
         userDto.setConfirmedPassword(persistedConfirmedUserPassword);
 
@@ -278,12 +281,12 @@ public class UserControllerTests {
                 persistedUserLasttName,
                 persistedUserEmail,
                 persistedUserPassword,
-                persistedUserGender,
+                persistedUserGenderEnum,
                 null);
 
         ResponseEntity response = new ResponseEntity(createdUserDto, HttpStatus.OK);
 
-        given(this.userManagementFacade.save(userDto))
+        given(this.userManagementFacade.save(userDto, mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.complete(response);
@@ -320,14 +323,14 @@ public class UserControllerTests {
                                 .isEqualTo(persistedUserLasttName))
                 .andExpect(
                         json()
-                                .node("email")
+                                .node("to")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
                                 .node("gender")
-                                .isEqualTo(persistedUserGender));
+                                .isEqualTo(persistedUserGenderEnum));
 
-        verify(userManagementFacade).save(userDto);
+        verify(userManagementFacade).save(userDto, mdcAdapter);
     }
 
     @Test
@@ -340,7 +343,7 @@ public class UserControllerTests {
         ResponseEntity response = new ResponseEntity(new ResponseMessageDto("OK", 200), HttpStatus.OK);
 
 
-        given(this.userManagementFacade.requestPasswordReset(userDto.getEmail()))
+        given(this.userManagementFacade.requestPasswordReset(userDto.getEmail(), mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.complete(response);
@@ -361,7 +364,7 @@ public class UserControllerTests {
                         json()
                                 .node("message")
                                 .isEqualTo("OK"));
-        verify(userManagementFacade).requestPasswordReset(userDto.getEmail());
+        verify(userManagementFacade).requestPasswordReset(userDto.getEmail(), mdcAdapter);
     }
 
 
@@ -415,11 +418,11 @@ public class UserControllerTests {
                 persistedUserLasttName,
                 persistedUserEmail,
                 persistedUserPassword,
-                persistedUserGender,
+                persistedUserGenderEnum,
                 null);
         createdUserDto.setConfirmedPassword(persistedUserPassword);
 
-        given(userManagementFacade.save(createdUserDto))
+        given(userManagementFacade.save(createdUserDto, mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.completeExceptionally(new NullPointerException(errMsg));
@@ -433,7 +436,7 @@ public class UserControllerTests {
 
         mvc.perform(asyncDispatch(asyscResult))
                 .andExpect(status().isBadRequest());
-        verify(userManagementFacade, times(1)).save(eq(createdUserDto));
+        verify(userManagementFacade, times(1)).save(eq(createdUserDto), mdcAdapter);
     }
 
     @Test
@@ -445,7 +448,7 @@ public class UserControllerTests {
         String persistedModelPassword = "createdUserPassword";
         LocalDate dob = LocalDate.of(1990, 01, 01);
 
-        String errMsg = String.format("user with email %s already exists", persistedModelEmail);
+        String errMsg = String.format("user with to %s already exists", persistedModelEmail);
 
 
         UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
@@ -453,11 +456,11 @@ public class UserControllerTests {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
         createUserDto.setConfirmedPassword(persistedModelPassword);
 
         given(this.userManagementFacade
-                .save(createUserDto))
+                .save(createUserDto, mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new AlreadyExistsException(errMsg));
@@ -473,7 +476,7 @@ public class UserControllerTests {
         mvc.perform(asyncDispatch(asyscResult))
                 .andExpect(status().isConflict());
 
-        verify(userManagementFacade, times(1)).save(eq(createUserDto));
+        verify(userManagementFacade, times(1)).save(eq(createUserDto), mdcAdapter);
     }
 
     @Test

@@ -6,7 +6,7 @@ import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.UserService;
-import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -50,6 +51,9 @@ public class LoginFacadeTests {
     @Mock
     private LoginService loginService;
 
+    @Mock
+    private MDCAdapter mdcAdapter;
+
     private LoginFacade loginFacade;
     private LoginDto loginDto;
 
@@ -60,7 +64,7 @@ public class LoginFacadeTests {
              messageService,
              loginService);
 
-        ReflectionTestUtils.setField(loginFacade, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(loginFacade, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new LoggerConfig()));
         ReflectionTestUtils.setField(loginFacade, "taskExecutor", Executors.newSingleThreadExecutor());
         loginDto = new LoginDto();
 
@@ -73,7 +77,7 @@ public class LoginFacadeTests {
         given(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED))
                 .willReturn(errMsg);
 
-        ResponseEntity responseEntity = loginFacade.login(null).get();
+        ResponseEntity responseEntity = loginFacade.login(null, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         String message = TestUtil.getResponseDtoMessage(responseEntity);
 
@@ -88,33 +92,33 @@ public class LoginFacadeTests {
     @Test
     public void shouldReturn403UnauthorizedGivenInvalidEmail() throws ExecutionException, InterruptedException {
 
-        String invalidUserErrMsg = "invalid email or password";
+        String invalidUserErrMsg = "invalid to or password";
         String email = "notfoud@quantal.com";
         String password = "Password";
 
         given(messageService.getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD))
                 .willReturn(invalidUserErrMsg);
 
-        given(loginService.login(email, password))
+        given(loginService.login(email, password, mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new NotFoundException(""));
                     return future;
                 });
 
-        given(userService.findOneByEmail(email))
+        given(userService.findOneByEmail(email, mdcAdapter))
                 .willAnswer(invocationOnMock -> null);
 
         loginDto.setEmail(email);
         loginDto.setPassword(password);
 
-        ResponseEntity responseEntity = loginFacade.login(loginDto).get();
+        ResponseEntity responseEntity = loginFacade.login(loginDto, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
 
         assertThat(httpStatus).isEqualTo(HttpStatus.UNAUTHORIZED);
 
         verify(messageService).getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD);
-        verify(loginService).login(email, password);
+        verify(loginService).login(email, password, mdcAdapter);
 
     }
 
@@ -127,17 +131,17 @@ public class LoginFacadeTests {
         loginDto.setPassword(password);
         loginDto.setEmail(email);
 
-        given(loginService.login(email, password))
+        given(loginService.login(email, password, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(jwt));
 
-        ResponseEntity responseEntity = loginFacade.login(loginDto).get();
+        ResponseEntity responseEntity = loginFacade.login(loginDto, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         TokenDto tokenDto = TestUtil.getResponseDtoData(responseEntity);
 
         assertThat(httpStatus).isEqualTo(HttpStatus.OK);
         assertThat(tokenDto.getToken()).isEqualToIgnoringCase(jwt);
 
-        verify(loginService).login(email, password);
+        verify(loginService).login(email, password, mdcAdapter);
 
     }
 

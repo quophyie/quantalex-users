@@ -10,7 +10,7 @@ import com.quantal.exchange.users.dto.EmailResponseDto;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.EmailType;
-import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.enums.TokenType;
 import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
@@ -23,7 +23,7 @@ import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
-import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.ResponseDto;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
@@ -40,7 +40,9 @@ import org.junit.contrib.java.lang.system.EnvironmentVariables;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.passay.RuleResult;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -90,7 +92,7 @@ public class UserManagementFacadesTest {
     private String persistedModelPassword = "createdUserPassword";
     private String persistedModelConfirmedPassword = "createdUserPassword";
     private LocalDate persistedModelDob = LocalDate.of(1990, 01, 01);
-    private Gender persistedModelGender = Gender.M;
+    private GenderEnum persistedModelGenderEnum = GenderEnum.M;
     private Long userId = 1L;
 
     @MockBean
@@ -119,9 +121,16 @@ public class UserManagementFacadesTest {
     @MockBean
     private EmailApiService emailApiService;
 
+    @MockBean
+    org.zalando.tracer.Tracer tracer;
+
 
     @InjectMocks
     private UserManagementFacade userManagementFacade;
+
+
+    @Mock
+    private MDCAdapter mdcAdapter;
 
     @Before
     public void setUp(){
@@ -137,7 +146,7 @@ public class UserManagementFacadesTest {
                passwordService);
         environmentVariables.set("DB_HOST", "localhost");
 
-        ReflectionTestUtils.setField(userManagementFacade, "logger", QuantalLoggerFactory.getLogger(UserManagementFacade.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(userManagementFacade, "logger", QuantalLoggerFactory.getLogger(UserManagementFacade.class, new LoggerConfig()));
 
     }
 
@@ -159,14 +168,14 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, persistedModelDob);
+                GenderEnum.M, persistedModelDob);
 
         User userModelFromDto = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, persistedModelDob);
+                GenderEnum.M, persistedModelDob);
 
 
         UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
@@ -174,7 +183,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, persistedModelDob);
+                GenderEnum.M, persistedModelDob);
 
         ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
         jwtUserCredentialResponseDto.setKey("TestKey");
@@ -189,7 +198,7 @@ public class UserManagementFacadesTest {
         tokenDto.setToken(jwt);
 
         given(this.userService
-                .createUser(eq(userModelFromDto)))
+                .createUser(eq(userModelFromDto), mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(createdModel));
 
 
@@ -207,10 +216,10 @@ public class UserManagementFacadesTest {
         given(authorizationApiService.requestUserCredentials(eq(authRequestDto)))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture( null));
 
-        given(authorizationApiService.requestToken(eq(authRequestDto)))
+        given(authorizationApiService.requestToken(eq(authRequestDto), "EVENT", "TRACE_ID"))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto, mdcAdapter).get();
         UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
         String message = ((ResponseDto<UserDto>)responseEntity.getBody()).getMessage();
 
@@ -225,13 +234,13 @@ public class UserManagementFacadesTest {
         assertThat(result.getEmail()).isEqualTo(persistedModelEmail);
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
         assertThat(result.getDob()).isEqualTo(persistedModelDob);
-        assertThat(result.getGender()).isEqualTo(Gender.M);
+        assertThat(result.getGender()).isEqualTo(GenderEnum.M);
         assertThat(result.getToken()).isEqualTo(jwt);
 
-        verify(userService, times(1)).createUser(userModelFromDto);
+        verify(userService, times(1)).createUser(userModelFromDto, mdcAdapter);
         verify(this.messageService).getMessage(MessageCodes.ENTITY_CREATED, replacements);
         verify(this.authorizationApiService).requestUserCredentials(authRequestDto);
-        verify(this.authorizationApiService).requestToken(authRequestDto);
+        verify(this.authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
 //          verify(this.userService).requestApiGatewayUserCredentials(persistedModelEmail);
     }
 
@@ -245,14 +254,14 @@ public class UserManagementFacadesTest {
         String persistedModelPassword = "createdUserPassword";
         LocalDate dob = LocalDate.of(1990, 01, 01);
 
-        String errMsg = String.format("user with email %s already exists", persistedModelEmail);
+        String errMsg = String.format("user with to %s already exists", persistedModelEmail);
 
         User userModelFromDto = UserTestUtil.createUserModel(null,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
 
         UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
@@ -260,24 +269,24 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         given(this.userService
-                .createUser(eq(userModelFromDto)))
+                .createUser(eq(userModelFromDto), mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new AlreadyExistsException(errMsg));
                     return future;
                 });
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto, mdcAdapter).get();
         String message = TestUtil.getResponseDtoMessage(responseEntity);
 
         HttpStatus httpStatusCode = responseEntity.getStatusCode();
         assertThat(httpStatusCode).isEqualTo(HttpStatus.CONFLICT);
         assertThat(errMsg).isEqualToIgnoringCase(message);
 
-        verify(userService, times(1)).createUser(eq(userModelFromDto));
+        verify(userService, times(1)).createUser(eq(userModelFromDto), mdcAdapter);
      }
 
     @Test
@@ -298,7 +307,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
 
         UserDto createUserDto = UserTestUtil.createApiGatewayUserDto(null,
@@ -306,14 +315,14 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, dob);
+                GenderEnum.M, dob);
 
         given(this.messageService
                 .getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements))
                 .willReturn(errMsg);
 
         given(this.userService
-                .createUser(eq(userModelFromDto)))
+                .createUser(eq(userModelFromDto), mdcAdapter))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new NullPointerException(errMsg));
@@ -321,7 +330,7 @@ public class UserManagementFacadesTest {
 
                 });
 
-        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto).get();
+        ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto, mdcAdapter).get();
 
         String message = TestUtil.getResponseDtoMessage(responseEntity);
 
@@ -330,7 +339,7 @@ public class UserManagementFacadesTest {
         assertThat(errMsg).isEqualToIgnoringCase(message);
 
         verify(this.messageService).getMessage(MessageCodes.NULL_DATA_PROVIDED, replacements);
-        verify(userService, times(1)).createUser(eq(userModelFromDto));
+        verify(userService, times(1)).createUser(eq(userModelFromDto), mdcAdapter);
     }
 
     @Test
@@ -357,7 +366,7 @@ public class UserManagementFacadesTest {
                 null);
 
         String msgSvcMsg = "already exists";
-        String partialErrMsg = String.format("user with email %s ", updateData.getEmail());
+        String partialErrMsg = String.format("user with to %s ", updateData.getEmail());
         String errMsg = String.format("%s%s", partialErrMsg, msgSvcMsg);
 
         // Given
@@ -399,14 +408,14 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         User updateModel = UserTestUtil.createUserModel(id,
                 updateDtoFirstName,
                 updateDtoLastName,
                 updateDtoEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         UserDto updateDto = UserTestUtil.createApiGatewayUserDto(id,
                 updateDtoFirstName,
@@ -442,7 +451,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getLastName()).isEqualTo(updateDtoLastName);
         assertThat(result.getEmail()).isEqualTo(updateDtoEmail);
         assertThat(result.getPassword()).isEqualTo(persistedModelPassword);
-        assertThat(result.getGender()).isEqualTo(Gender.M);
+        assertThat(result.getGender()).isEqualTo(GenderEnum.M);
         verify(userService, times(1)).updateUser(eq(updateModel));
         verify(messageService).getMessage(MessageCodes.ENTITY_UPDATED, replacements);
 
@@ -471,7 +480,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M,
+                GenderEnum.M,
                 dob);
 
         User updateModel = UserTestUtil.createUserModel(id,
@@ -479,7 +488,7 @@ public class UserManagementFacadesTest {
                 updatedUserLastName,
                 updatedEmail,
                 updatedUserPassword,
-                Gender.F,
+                GenderEnum.F,
                 updatedDob);
 
         UserDto updateDto = UserTestUtil.createApiGatewayUserDto(id,
@@ -487,7 +496,7 @@ public class UserManagementFacadesTest {
                 updatedUserLastName,
                 updatedEmail,
                 updatedUserPassword,
-                Gender.F,
+                GenderEnum.F,
                 updatedDob);
 
 
@@ -511,7 +520,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getLastName()).isEqualTo(updatedUserLastName);
         assertThat(result.getEmail()).isEqualTo(updatedEmail);
         assertThat(result.getPassword()).isEqualTo(updatedUserPassword);
-        assertThat(result.getGender()).isEqualTo(Gender.F);
+        assertThat(result.getGender()).isEqualTo(GenderEnum.F);
         verify(userService, times(1)).updateUser(eq(updateModel));
 
     }
@@ -524,7 +533,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M,
+                GenderEnum.M,
                 persistedModelDob);
 
 
@@ -550,7 +559,7 @@ public class UserManagementFacadesTest {
         assertThat(result.getLastName()).isEqualTo(persistedModelLastName);
         assertThat(result.getEmail()).isEqualTo(persistedModelEmail);
         assertThat(result.getDob()).isEqualTo(persistedModelDob);
-        assertThat(result.getGender()).isEqualTo(persistedModelGender);
+        assertThat(result.getGender()).isEqualTo(persistedModelGenderEnum);
         verify(userService, times(1)).findOne(userId);
     }
 
@@ -584,7 +593,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M,
+                GenderEnum.M,
                 persistedModelDob);
 
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(successMsg);
@@ -673,7 +682,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         given(this.userService
                 .updateUser(userUpdateData))
@@ -689,7 +698,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         ResponseEntity responseEntity = userManagementFacade.updateUser(id, userDto).get();
 
@@ -750,16 +759,16 @@ public class UserManagementFacadesTest {
     public void shouldThrowInvalidDataExceptionGivenEmptyEmailOnRequestPasswordReset () throws ExecutionException, InterruptedException {
 
         String email = "";
-        String errMsg = "email data is null or empty";
+        String errMsg = "to data is null or empty";
 
-        String[] replacements = new String[]{"email"};
+        String[] replacements = new String[]{"to"};
 
         given(messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements )).willReturn(errMsg);
 
 
         // When
         try {
-            userManagementFacade.requestPasswordReset(email).get();
+            userManagementFacade.requestPasswordReset(email, mdcAdapter).get();
         } catch (Throwable ex) {
             Throwable businessEx = CommonUtils.extractBusinessException(ex);
             Assertions.assertThat(businessEx instanceof InvalidDataException).isTrue();
@@ -778,7 +787,7 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         String message = "OK";
         String jwt = "jwt_token";
@@ -791,16 +800,16 @@ public class UserManagementFacadesTest {
         tokenDto.setToken(jwt);
 
         EmailRequestDto emailRequestDto = new EmailRequestDto();
-        emailRequestDto.setEmail(persistedModelEmail);
+        emailRequestDto.setTo(persistedModelEmail);
         emailRequestDto.setToken(tokenDto.getToken());
         emailRequestDto.setEmailType(EmailType.PasswordReset);
 
 
         // Given
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
-        given(userService.findOneByEmail(persistedModelEmail))
+        given(userService.findOneByEmail(persistedModelEmail, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
-        given(authorizationApiService.requestToken(authRequestDto))
+        given(authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
         given(emailApiService.sendEmail(emailRequestDto))
@@ -809,13 +818,13 @@ public class UserManagementFacadesTest {
                     return CompletableFuture.completedFuture(emailResponseDto);
                 });
         // When
-        ResponseEntity responseEntity = userManagementFacade.requestPasswordReset(persistedModelEmail).get();
+        ResponseEntity responseEntity = userManagementFacade.requestPasswordReset(persistedModelEmail, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         assertThat(httpStatus).isEqualTo(HttpStatus.OK);
 
         verify(messageService).getMessage(MessageCodes.SUCCESS);
-        verify(userService).findOneByEmail(persistedModelEmail);
-        verify(authorizationApiService).requestToken(authRequestDto);
+        verify(userService).findOneByEmail(persistedModelEmail, mdcAdapter);
+        verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
         verify(emailApiService).sendEmail(emailRequestDto);
     }
 
@@ -823,9 +832,9 @@ public class UserManagementFacadesTest {
     public void shouldReturn400BadRequestGivenEmptyEmailOrPasswordOnPasswordReset () throws ExecutionException, InterruptedException {
 
         String email = "";
-        String errMsg = "email data is null or empty";
+        String errMsg = "to data is null or empty";
 
-        String[] replacements = new String[]{"email or password"};
+        String[] replacements = new String[]{"to or password"};
 
         UserDto userDto = new UserDto();
         userDto.setEmail(email);
@@ -848,7 +857,7 @@ public class UserManagementFacadesTest {
     public void shouldReturn400BadRequestGivenInvalidPasswordOnPasswordReset () throws ExecutionException, InterruptedException {
 
 
-        String errMsg = "inavlid email or password";
+        String errMsg = "inavlid to or password";
 
         UserDto userDto = new UserDto();
         userDto.setEmail(persistedModelEmail);
@@ -890,7 +899,7 @@ public class UserManagementFacadesTest {
         String[] replacements = new String[]{User.class.getSimpleName()};
 
         given(messageService.getMessage(MessageCodes.NOT_FOUND, replacements)).willReturn(errMsg);
-        given(userService.findOneByEmail(userDto.getEmail() ))
+        given(userService.findOneByEmail(userDto.getEmail(), mdcAdapter ))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(null));
         given(passwordService.checkPasswordValidity(userDto.getPassword() )).willReturn(ruleResult);
 
@@ -900,7 +909,7 @@ public class UserManagementFacadesTest {
         assertThat(httpStatus).isEqualTo(HttpStatus.NOT_FOUND);
         verify(messageService).getMessage(MessageCodes.NOT_FOUND, replacements);
         verify(passwordService).checkPasswordValidity(userDto.getPassword());
-        verify(userService).findOneByEmail(userDto.getEmail());
+        verify(userService).findOneByEmail(userDto.getEmail(), mdcAdapter);
     }
 
 
@@ -920,14 +929,14 @@ public class UserManagementFacadesTest {
                 persistedModelLastName,
                 persistedModelEmail,
                 persistedModelPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         User updatedUser = UserTestUtil.createUserModel(1L,
                 persistedModelFirstName,
                 persistedModelLastName,
                 persistedModelEmail,
                 newPassword,
-                Gender.M, null);
+                GenderEnum.M, null);
 
         String message = "OK";
         String jwt = "jwt_token";
@@ -943,16 +952,16 @@ public class UserManagementFacadesTest {
         ruleResult.setValid(true);
 
         EmailRequestDto emailRequestDto = new EmailRequestDto();
-        emailRequestDto.setEmail(persistedModelEmail);
+        emailRequestDto.setTo(persistedModelEmail);
         emailRequestDto.setToken(tokenDto.getToken());
         emailRequestDto.setEmailType(EmailType.PasswordReset);
 
 
         // Given
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
-        given(userService.findOneByEmail(persistedModelEmail))
+        given(userService.findOneByEmail(persistedModelEmail, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
-        given(authorizationApiService.requestToken(authRequestDto))
+        given(authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
         given(authorizationApiService.deleteAllTokens(user.getEmail()))
@@ -969,9 +978,9 @@ public class UserManagementFacadesTest {
         assertThat(httpStatus).isEqualTo(HttpStatus.OK);
 
         verify(messageService).getMessage(MessageCodes.SUCCESS);
-        verify(userService).findOneByEmail(persistedModelEmail);
+        verify(userService).findOneByEmail(persistedModelEmail, mdcAdapter);
         verify(userService).saveOrUpdate(updatedUser);
-        verify(authorizationApiService).requestToken(authRequestDto);
+        verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
         verify(authorizationApiService).deleteAllTokens(user.getEmail());
         verify(passwordService).checkPasswordValidity(userDto.getPassword());
     }

@@ -1,37 +1,35 @@
 package com.quantal.exchange.users.services.implementations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.quantal.exchange.users.constants.Events;
+import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
+import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
+import com.quantal.exchange.users.models.User;
+import com.quantal.exchange.users.repositories.UserRepository;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
+import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.annotations.logger.InjectLogger;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
-import com.quantal.exchange.users.constants.MessageCodes;
-import com.quantal.exchange.users.exceptions.AlreadyExistsException;
-import com.quantal.exchange.users.exceptions.NotFoundException;
-import com.quantal.exchange.users.models.User;
-import com.quantal.exchange.users.repositories.UserRepository;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.implementations.AbstractRepositoryServiceAsync;
 import com.quantal.javashared.services.interfaces.MessageService;
-import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.util.CommonUtils;
 import io.jsonwebtoken.JwsHeader;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
 import org.passay.RuleResult;
-import org.slf4j.ext.XLogger;
-import org.slf4j.ext.XLoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -45,7 +43,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static com.quantal.javashared.constants.CommonConstants.EMAIL_KEY;
 import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 
 /**
@@ -96,18 +93,18 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
     }
 
     @Override
-    public CompletableFuture<User> createUser(User user) {
+    public CompletableFuture<User> createUser(User user, MDCAdapter mdcAdapter) {
         if (!ObjectUtils.allNotNull(user)) {
             throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
         }
 
         ApiGatewayUserResponseDto gatewayUserResponse = new ApiGatewayUserResponseDto();
         user.setEmail(user.getEmail().toLowerCase());
-         return this.findOneByEmail(user.getEmail())
+         return this.findOneByEmail(user.getEmail(), mdcAdapter)
                 .thenCompose(existingUser -> {
 
                     if (existingUser != null) {
-                        String msg = String.format("user with email %s ", user.getEmail());
+                        String msg = String.format("user with to %s ", user.getEmail());
                         throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                     }
 
@@ -131,7 +128,8 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
     }
 
     @Override
-    public CompletableFuture<User> findOneByEmail(String email) {
+    public CompletableFuture<User> findOneByEmail(String email, MDCAdapter mdcAdapter) {
+        MDC.setContextMap(mdcAdapter.getCopyOfContextMap());
         return CompletableFuture.completedFuture(userRepository.findOneByEmail(email));
     }
 
@@ -209,8 +207,8 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
     private CompletableFuture<User> checkEmailAvailability (String email, User userToUpdate) {
 
-            // Check and make sure that there isn't another user with the same email
-            // as the user we are about to update if the update data contains an email
+            // Check and make sure that there isn't another user with the same to
+            // as the user we are about to update if the update data contains an to
             if (StringUtils.isNotEmpty(email)) {
 
                 return this
@@ -219,14 +217,14 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
                             if (usersWithSameEmail.size() >= 1) {
 
-                                // Filter out users with the same email as the one we are about to update
+                                // Filter out users with the same to as the one we are about to update
                                 usersWithSameEmail.stream()
                                         .filter(user -> user.getId() != ((User) userToUpdate).getId())
                                         .forEach(user -> {
-                                            String msg = String.format("user with email %s ", email);
+                                            String msg = String.format("user with to %s ", email);
                                             throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                                         });
-                                //  String msg = String.format("user with email %s ", updateData.getEmail());
+                                //  String msg = String.format("user with to %s ", updateData.getTo());
                                 //  throw new AlreadyExistsException(messageService.getMessage(MessageCodes.ENTITY_ALREADY_EXISTS, new String[]{msg}));
                             }
                             return userToUpdate;

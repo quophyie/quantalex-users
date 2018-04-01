@@ -2,7 +2,8 @@ package com.quantal.exchange.users.util;
 
 import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
 import com.quantal.exchange.users.dto.UserDto;
-import com.quantal.exchange.users.enums.Gender;
+import com.quantal.exchange.users.enums.GenderEnum;
+import com.quantal.exchange.users.models.Gender;
 import com.quantal.exchange.users.models.User;
 
 import java.time.LocalDate;
@@ -16,9 +17,11 @@ public class UserTestUtil {
                                        String lasstName,
                                        String email,
                                        String password,
-                                       Gender gender,
+                                       GenderEnum genderEnum,
                                        LocalDate dob) {
 
+        Gender gender = new Gender();
+        gender.setName(genderEnum.name());
         User model = new User();
         model.setId(userId);
         model.setFirstName(firstName);
@@ -35,7 +38,7 @@ public class UserTestUtil {
                                                   String lasstName,
                                                   String email,
                                                   String password,
-                                                  Gender gender,
+                                                  GenderEnum genderEnum,
                                                   LocalDate dob) {
 
         UserDto userDto = new UserDto();
@@ -43,7 +46,7 @@ public class UserTestUtil {
         userDto.setFirstName(firstName);
         userDto.setLastName(lasstName);
         userDto.setEmail(email);
-        userDto.setGender(gender);
+        userDto.setGender(genderEnum);
         userDto.setPassword(password);
         userDto.setDob(dob);
         return userDto;

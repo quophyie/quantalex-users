@@ -24,7 +24,7 @@ import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
 @RestController
 @ControllerAdvice
 //@Slf4j
-public class ExceptionHandlerCotrollerAdvice {
+public class ExceptionHandlerControllerAdvice {
 
     @InjectLogger
     private QuantalLogger logger;
@@ -32,13 +32,13 @@ public class ExceptionHandlerCotrollerAdvice {
     private MessageService messageService;
 
     @Autowired
-    public  ExceptionHandlerCotrollerAdvice (MessageService messageService) {
+    public ExceptionHandlerControllerAdvice(MessageService messageService) {
         this.messageService = messageService;
 
     }
 
    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Throwable.class)
+    //@ExceptionHandler(Throwable.class)
     //@ResponseBody
     public ResponseEntity handleThrowable(final Throwable ex) {
         logger.error("Unexpected error", ex);

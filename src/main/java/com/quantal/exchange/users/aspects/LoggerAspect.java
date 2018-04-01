@@ -30,10 +30,10 @@ import java.util.Map;
 /**
  * Created by dman on 09/10/2017.
  */
-//@Aspect
+@Aspect
 //@Scope("singleton")
-@Configurable(autowire= Autowire.BY_TYPE,dependencyCheck=true, preConstruction=true)
-@Component
+//@Configurable(autowire= Autowire.BY_TYPE,dependencyCheck=true, preConstruction=true)
+//@Component
 public class LoggerAspect  {
 
 

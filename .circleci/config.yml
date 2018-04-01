@@ -19,7 +19,7 @@ jobs:
           key: quantal_users-{{ checksum "pom.xml" }}
 
       - run: mvn dependency:go-offline
-
+`
       - run: mkdir -p /var/log
       - run: sudo touch /var/log/springboot_log.log /var/log/app_log.log /var/log/app_log.json && sudo chmod 777 /var/log/springboot_log.log /var/log/app_log.log /var/log/app_log.json
 

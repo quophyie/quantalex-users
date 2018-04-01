@@ -1,6 +1,6 @@
 package com.quantal.exchange.users.services.interfaces;
 
-import com.quantal.exchange.users.dto.LoginDto;
+import org.slf4j.spi.MDCAdapter;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -9,6 +9,6 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface LoginService {
 
-    CompletableFuture<String> login(String email, String password);
+    CompletableFuture<String> login(String email, String password, MDCAdapter mdcAdapter);
     CompletableFuture<Void> logout(String jwt) ;
 }

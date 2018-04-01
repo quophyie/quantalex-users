@@ -1,36 +1,34 @@
 package com.quantal.exchange.users.config.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.quantal.exchange.users.aspects.LoggerAspect;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
 import com.quantal.exchange.users.services.api.EmailApiService;
 import com.quantal.exchange.users.services.api.GiphyApiService;
-import com.quantal.javashared.logger.LoggerFactory;
-import okhttp3.*;
+import com.quantal.javashared.aspects.RetrofitRequiredHeadersEnforcerAspectJAspect;
+import com.quantal.javashared.constants.CommonConstants;
+import com.quantal.javashared.dto.LogEvent;
+import com.quantal.javashared.dto.LoggerConfig;
+import com.quantal.javashared.logger.QuantalLogger;
+import com.quantal.javashared.logger.QuantalLoggerFactory;
+import okhttp3.Dispatcher;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okio.Buffer;
 import org.aspectj.lang.Aspects;
 import org.slf4j.MDC;
-import org.slf4j.ext.XLogger;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.cloud.sleuth.SpanNamer;
 import org.springframework.cloud.sleuth.TraceKeys;
 import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.cloud.sleuth.instrument.async.TraceableExecutorService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.EnableLoadTimeWeaving;
-import org.springframework.context.annotation.ImportResource;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.aspectj.EnableSpringConfigured;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
-import org.springframework.instrument.classloading.InstrumentationLoadTimeWeaver;
-import org.springframework.instrument.classloading.LoadTimeWeaver;
 import retrofit2.Retrofit;
 import retrofit2.adapter.java8.Java8CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -43,7 +41,10 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.quantal.javashared.constants.CommonConstants.EVENT_HEADER_KEY;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_HEADER_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
 
 /**
  * Created by dman on 14/03/2017.
@@ -55,7 +56,7 @@ import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_HEADER_K
 public class ApiConfig// implements AsyncConfigurer
 {
 
-    private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
+    //private XLogger logger = LoggerFactory.getLogger(this.getClass().getName());
     private Environment env;
 
 
@@ -69,9 +70,13 @@ public class ApiConfig// implements AsyncConfigurer
     @Autowired
     private TraceKeys traceKeys;
 
+
+    private QuantalLogger logger;
+
     @Autowired
-    public ApiConfig(Environment env){
+    public ApiConfig(Environment env, LoggerConfig loggerConfig){
         this.env = env;
+        logger = QuantalLoggerFactory.getLogzioLogger(ApiConfig.class, loggerConfig);
     }
 
 
@@ -89,15 +94,50 @@ public class ApiConfig// implements AsyncConfigurer
     @Bean
     public OkHttpClient okHttpClient() {
         ExecutorService executorService = getAsyncExecutor();
-        Dispatcher dispatcher = new Dispatcher(executorService);
+        //Dispatcher dispatcher = new Dispatcher(executorService);
+        Dispatcher dispatcher = new Dispatcher();
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        builder.dispatcher(dispatcher);
+        //builder.dispatcher(dispatcher);
 
         Map<String, String> previous = MDC.getCopyOfContextMap();
+        /*builder.interceptors()
+                .add(0, chain -> {
+                    Request original = chain.request();
+
+                    // Request customization: add request headers
+                    Request.Builder requestBuilder = original.newBuilder()
+                            .header("MyTestHeader", "auth-value"); // <-- this is the important line
+
+                    Request request = requestBuilder.build();
+                    return chain.proceed(request);
+                });*/
+
         builder.interceptors().add(chain -> {
+
             String requestBody = null;
             Request request = chain.request();
             Request newRequest;
+
+
+            MDC.put(EVENT_KEY, request.header(EVENT_HEADER_KEY));
+            MDC.put(TRACE_ID_MDC_KEY, request.header(TRACE_ID_HEADER_KEY));
+            LogEvent event = new LogEvent(request.header(CommonConstants.EVENT_HEADER_KEY));
+            final boolean bAllRequiredHeadersFound = request
+                    .headers()
+                    .names()
+                    .stream()
+                    .filter(name -> name.equalsIgnoreCase(EVENT_HEADER_KEY) || name.equalsIgnoreCase(TRACE_ID_HEADER_KEY))
+                    .count() == 2;
+
+            if(!bAllRequiredHeadersFound){
+                String msg = String.format("The required request headers %s and %s were not found. " +
+                        "Please make sure that your api interface method " +
+                        "has headers %s and %s ",
+                        EVENT_HEADER_KEY, TRACE_ID_HEADER_KEY, EVENT_HEADER_KEY, TRACE_ID_HEADER_KEY);
+                RuntimeException exception =  new IllegalStateException(msg);
+                throw exception;
+
+            }
 
             final Buffer buffer = new Buffer();
            /* if (request.body() != null) {
@@ -105,7 +145,11 @@ public class ApiConfig// implements AsyncConfigurer
                 requestBody = buffer.readUtf8();
             }*/
             long t1 = System.nanoTime();
-            newRequest = request.newBuilder().addHeader(TRACE_ID_HEADER_KEY, MDC.get("X-B3-TraceId")).build();
+            //newRequest = request.newBuilder().addHeader(TRACE_ID_HEADER_KEY, MDC.get("X-B3-TraceId")).build();
+            newRequest = request.newBuilder()
+                    //.addHeader(TRACE_ID_HEADER_KEY, request.header(CommonConstants.TRACE_ID_MDC_KEY))
+                    //.addHeader(EVENT_HEADER_KEY, request.header(CommonConstants.EVENT_KEY))
+                    .build();
             /*logger.info(String.format("Sending request %s on %s%n%s %s",
                     newRequest.url(), chain.connection(), newRequest.headers(), requestBody))*/
 
@@ -117,7 +161,9 @@ public class ApiConfig// implements AsyncConfigurer
                         put("headers", newRequest.headers());
                         put("requestBody", getRequestBody(request, buffer));
                     }},
-                    newRequest.url(), chain.connection(), newRequest.headers(), requestBody);
+                    newRequest.url(), chain.connection(), newRequest.headers(), requestBody,
+                    event
+            );
 
             Response response = chain.proceed(newRequest);
 
@@ -143,6 +189,12 @@ public class ApiConfig// implements AsyncConfigurer
 
         OkHttpClient client = builder.build();
         return client;
+    }
+
+    @Bean
+    public RetrofitRequiredHeadersEnforcerAspectJAspect requestHeadersAspect(){
+        RetrofitRequiredHeadersEnforcerAspectJAspect requestHeadersAspect = Aspects.aspectOf(RetrofitRequiredHeadersEnforcerAspectJAspect.class);
+        return  requestHeadersAspect;
     }
 
     @Bean

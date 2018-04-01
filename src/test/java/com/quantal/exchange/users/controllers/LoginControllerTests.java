@@ -1,17 +1,18 @@
 package com.quantal.exchange.users.controllers;
 
-import com.quantal.exchange.users.controlleradvice.ExceptionHandlerCotrollerAdvice;
+import com.quantal.exchange.users.controlleradvice.ExceptionHandlerControllerAdvice;
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.facades.LoginFacade;
-import com.quantal.javashared.dto.CommonLogFields;
+import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.TestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.mockito.Mock;
+import org.slf4j.spi.MDCAdapter;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,15 +53,16 @@ public class LoginControllerTests {
     @MockBean
     private MessageService messageService;
 
-
+    @Mock
+    private MDCAdapter mdcAdapter;
     @Before
     public void setUp() {
 
 
         loginController = new LoginController(loginFacade, null);
-        ReflectionTestUtils.setField(loginController, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new CommonLogFields()));
+        ReflectionTestUtils.setField(loginController, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new LoggerConfig()));
        mvc=  MockMvcBuilders.standaloneSetup(loginController)
-                .setControllerAdvice(new ExceptionHandlerCotrollerAdvice(messageService)).build();
+                .setControllerAdvice(new ExceptionHandlerControllerAdvice(messageService)).build();
 
     }
 
@@ -72,7 +74,7 @@ public class LoginControllerTests {
         loginDto.setPassword("password");
         String jwt = "jwt_token";
 
-        given(loginFacade.login(loginDto)).willAnswer(invocationOnMock -> {
+        given(loginFacade.login(loginDto, mdcAdapter)).willAnswer(invocationOnMock -> {
             TokenDto tokenDto = new TokenDto();
             tokenDto.setToken(jwt);
             ResponseEntity<?> responseEntity = new ResponseEntity<>(tokenDto,HttpStatus.OK);

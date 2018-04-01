@@ -1,22 +1,16 @@
 <!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
 <aspectj>
-
     <weaver options="-verbose -showWeaveInfo">
         <!--
             Only weave classes in our application-specific packages.
             This should encompass any class that wants to utilize the aspects,
-            and does not need to encompass the aspects themselves.
+            and must  encompass the aspects themselves.
         -->
-
-        <!--<include within="@org.springframework.beans.factory.annotation.Configurable *" />-->
-        <!--<include within="com.quantal.shared.logger.QuantalJsonLogger.*" />-->
-        <!--<include within="org.springframework.boot..*" />-->
-       <include within="com.quantal.shared.logger..*" />
+        <include within="com.quantal.javashared.aspects.RetrofitRequiredHeadersEnforcerAspectJAspect" />
+        <!-- <include within="com.quantal.exchange.users.services.api.AuthorizationApiService"/> -->
     </weaver>
-
     <aspects>
         <!-- declare aspects to the weaver -->
-        <aspect name="com.quantal.exchange.users.aspects.LoggerAspect" />
+        <aspect name="com.quantal.javashared.aspects.RetrofitRequiredHeadersEnforcerAspectJAspect" />
     </aspects>
-
 </aspectj>
