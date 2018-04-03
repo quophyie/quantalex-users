@@ -6,7 +6,7 @@ import com.quantal.javashared.beanpostprocessors.LoggerInjectorBeanPostProcessor
 import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.LogzioConfig;
-import com.quantal.javashared.filters.LoggingFilter;
+import com.quantal.javashared.filters.EventAndTraceIdPopulatingFilter;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -158,8 +158,8 @@ public class SharedConfig {
 
     @Bean
     @Order(1)
-    public LoggingFilter loggingFilter(){
-        return new LoggingFilter();
+    public EventAndTraceIdPopulatingFilter eventAndTraceIdPopulatingFilter(){
+        return new EventAndTraceIdPopulatingFilter();
     }
 
 }
