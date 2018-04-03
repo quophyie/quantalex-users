@@ -353,7 +353,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
   public CompletableFuture<String> getFunnyCat(){
     CompletableFuture<String> result = giphyApiService
-            .getGiphy("funny+cat", "dc6zaTOxFJmzC", MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)).thenApply((res) -> res);
+            .getGiphy("funny+cat", "dc6zaTOxFJmzC").thenApply((res) -> res);
     return result;
   }
 

@@ -61,7 +61,7 @@ public class GiphyApiServiceTests {
 
         // When
 
-        String result = giphyApiService.getPokemon(20, 0, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)).get();
+        String result = giphyApiService.getPokemon(20, 0).get();
         String jsonStringResult = StringEscapeUtils.unescapeJson(result);
 
         //Then
