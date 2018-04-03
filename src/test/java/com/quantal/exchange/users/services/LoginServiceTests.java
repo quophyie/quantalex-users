@@ -10,6 +10,7 @@ import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.exceptions.InvalidDataException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
+import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.api.AuthorizationApiService;
@@ -18,8 +19,10 @@ import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
@@ -28,6 +31,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.slf4j.MDC;
 import org.slf4j.spi.MDCAdapter;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -38,6 +42,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -91,7 +97,11 @@ public class LoginServiceTests {
                         LocalDate.of(1981, 01, 01)
 
                         );
-        ReflectionTestUtils.setField(loginService, "logger", QuantalLoggerFactory.getLogger(LoginService.class, new LoggerConfig()));
+        given(mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
+        QuantalLogger quantalLogger = QuantalLoggerFactory.getLogger(UserManagementFacade.class,  LoggerConfig.builder().commonLogFields(new CommonLogFields()).build());
+        quantalLogger = (QuantalLogger) quantalLogger.with(CommonConstants.TRACE_ID_MDC_KEY, TRACE_ID).with(CommonConstants.EVENT_KEY, "EVENT");
+        ReflectionTestUtils.setField(loginService, "logger", quantalLogger);
         ReflectionTestUtils.setField(loginService, "taskExecutor", Executors.newSingleThreadExecutor());
         ReflectionTestUtils.setField(loginService, "JWT_SECRET", "secret");
     }
@@ -151,7 +161,7 @@ public class LoginServiceTests {
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
 
         given(passwordService.checkPassword(password, hashedPassword)).willReturn(true);
-       given( authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
+       given( authorizationApiService.requestToken(authRequestDto, EVENT, TRACE_ID))
                .willAnswer(invocationOnMock -> {
                    TokenDto tokenDto = new TokenDto();
                    tokenDto.setToken(jwt);
@@ -162,7 +172,7 @@ public class LoginServiceTests {
         assertThat(result).isEqualToIgnoringCase(jwt);
         verify(passwordService).checkPassword(password, hashedPassword);
         verify(userService).findOneByEmail(email, mdcAdapter);
-        verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
+        verify(authorizationApiService).requestToken(authRequestDto, EVENT, TRACE_ID);
 
     }
 
@@ -177,7 +187,7 @@ public class LoginServiceTests {
 
         given(passwordService.checkPassword(password, hashedPassword)).willReturn(true);
 
-        given(apiGatewayService.getConsumerJwtCredentials(email))
+        given(apiGatewayService.getConsumerJwtCredentials(email, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
                 .willAnswer(invocationOnMock -> {
                     ApiJwtUserCredentialsListResponseDto jwtUserCredentialListResponseDto = new ApiJwtUserCredentialsListResponseDto();
                     ApiJwtUserCredentialResponseDto jwtUserCredentialResponseDto = new ApiJwtUserCredentialResponseDto();
@@ -192,7 +202,7 @@ public class LoginServiceTests {
             assertThat(busEx).isInstanceOf(InvalidDataException.class);
             verify(passwordService).checkPassword(password, hashedPassword);
             verify(userService).findOneByEmail(email, mdcAdapter);
-            verify(apiGatewayService).getConsumerJwtCredentials(email);
+            verify(apiGatewayService).getConsumerJwtCredentials(email, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
         }
 
 
@@ -257,7 +267,7 @@ public class LoginServiceTests {
         String jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxMjM0NTY3ODkwIn0.A3-qkjWnE3Y_8Hc9TlP_MIe9OWAXCy3TCsx-e1V40gc";
         String jti = "1234567890";
 
-        given(authorizationApiService.deleteToken(jti))
+        given(authorizationApiService.deleteToken(jti, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
                 .willAnswer(invocationOnMock -> {
                     AuthResponseDto authResponseDto = new AuthResponseDto();
                     authResponseDto.setCode(200);
@@ -267,7 +277,7 @@ public class LoginServiceTests {
         Object result = loginService.logout(jwt).get();
         assertThat(result).isNull();
 
-        verify(authorizationApiService).deleteToken(jti);
+        verify(authorizationApiService).deleteToken(jti, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
     }
 
 }

@@ -6,7 +6,10 @@ import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.services.interfaces.LoginService;
 import com.quantal.exchange.users.services.interfaces.UserService;
+import com.quantal.javashared.constants.CommonConstants;
+import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -26,6 +29,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -64,8 +69,14 @@ public class LoginFacadeTests {
              messageService,
              loginService);
 
-        ReflectionTestUtils.setField(loginFacade, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new LoggerConfig()));
+        given(mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
+        QuantalLogger quantalLogger = QuantalLoggerFactory.getLogger(UserManagementFacade.class,  LoggerConfig.builder().commonLogFields(new CommonLogFields()).build());
+        quantalLogger = (QuantalLogger) quantalLogger.with(CommonConstants.TRACE_ID_MDC_KEY, TRACE_ID).with(CommonConstants.EVENT_KEY, "EVENT");
+        ReflectionTestUtils.setField(loginFacade, "logger", quantalLogger);
         ReflectionTestUtils.setField(loginFacade, "taskExecutor", Executors.newSingleThreadExecutor());
+
+
         loginDto = new LoginDto();
 
     }

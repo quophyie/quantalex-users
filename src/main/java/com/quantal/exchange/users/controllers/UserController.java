@@ -90,7 +90,7 @@ public class UserController extends BaseControllerAsync {
 
   @PostMapping(value="/reset-password")
   public CompletableFuture<?> resetPassword(@RequestBody UserDto userDto){
-    return userManagementFacade.resetPassword(userDto)
+    return userManagementFacade.resetPassword(userDto, MDC.getMDCAdapter())
             .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));
   }
 

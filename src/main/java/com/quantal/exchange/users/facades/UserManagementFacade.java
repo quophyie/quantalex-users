@@ -42,6 +42,7 @@ import static com.quantal.javashared.constants.CommonConstants.EMAIL_KEY;
 import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 import static com.quantal.javashared.constants.CommonConstants.STATUS_CODE_KEY;
 import static com.quantal.javashared.constants.CommonConstants.SUB_EVENT_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
 import static com.quantal.javashared.constants.CommonConstants.USER_ID_KEY;
 import static com.quantal.javashared.constants.CommonConstants.USER_KEY;
 
@@ -110,9 +111,9 @@ public class UserManagementFacade extends AbstractBaseFacade {
                             .debug("created user: user ", userDto);
                     return createdDto;
                 })
-              .thenApply(user -> authorizationApiService.requestUserCredentials(authRequestDto))
+              .thenApply(user -> authorizationApiService.requestUserCredentials(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
               .thenCompose(res -> res)
-              .thenApply(credential -> authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
+              .thenApply(credential -> authorizationApiService.requestToken(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
               .thenCompose(res -> res)
               .thenApply(token -> {
                   createdDto.setToken(token.getToken());
@@ -122,7 +123,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
               .thenApply(responseEnt -> {
                 EmailRequestDto emailDetails = new EmailRequestDto();
                 emailDetails.setTo(userDto.getEmail());
-               return emailApiService.sendEmailByTemplate(EmailTemplates.NEW_USER_TEMPLATE,emailDetails);
+               return emailApiService.sendEmailByTemplate(EmailTemplates.NEW_USER_TEMPLATE,emailDetails, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
               })
                .thenCompose(emailResponseDtoCompletableFuture -> emailResponseDtoCompletableFuture)
                .thenApply(emailResponseDto ->  responseEntity[0]);
@@ -190,7 +191,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                                 .with(USER_ID_KEY, userId)
                                 .with(EMAIL_KEY, ((User)user).getEmail())
                                 .debug("requesting authorization service to delete {} user credentials", ((User)user).getEmail());
-                        return authorizationApiService.deleteUserCredentials(((User)user).getEmail());
+                        return authorizationApiService.deleteUserCredentials(((User)user).getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
                     })
                     .thenApply(ret -> {
                         ResponseEntity<?> responseEntity = toRESTResponse(null, messageService.getMessage(MessageCodes.SUCCESS));
@@ -216,7 +217,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .with(EMAIL_KEY, email)
                 .debug("requesting password reset token for {} ...", email);
            return userService.findOneByEmail(email, mdcAdapter)
-                   .thenApply(user -> authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
+                   .thenApply(user -> authorizationApiService.requestToken(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
                    .thenCompose(tokenDto -> tokenDto)
                    .thenCompose(tokenDto -> {
                        logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
@@ -231,7 +232,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                        logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
                                .with(EMAIL_KEY, email)
                                .debug("sending password reset to to {}", email);
-                       return emailApiService.sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto);
+                       return emailApiService.sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
                    })
                    .thenApply(emailResponseDto -> {
                     String message = messageService.getMessage(MessageCodes.SUCCESS);
@@ -249,7 +250,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                    });
     }
 
-    public CompletableFuture<ResponseEntity> resetPassword(UserDto userDto){
+    public CompletableFuture<ResponseEntity> resetPassword(UserDto userDto, MDCAdapter mdcAdapter){
         logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                 .with(EMAIL_KEY,  userDto.getEmail())
                 .debug("resetting password for {}", userDto.getEmail());
@@ -284,7 +285,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                 .debug("finding user identified by {}", userDto.getEmail());
 
         return userService.
-                findOneByEmail(userDto.getEmail(), MDC.getMDCAdapter())
+                findOneByEmail(userDto.getEmail(), mdcAdapter)
                 .thenApply(user -> {
                     if(user == null){
                       throw logger.throwing(new NotFoundException(""));
@@ -301,7 +302,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                     logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                             .with(EMAIL_KEY,  userDto.getEmail())
                             .debug("deleting all tokens for user {} ", updateUser);
-                    return authorizationApiService.deleteAllTokens(updateUser.getEmail());
+                    return authorizationApiService.deleteAllTokens(updateUser.getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
                 })
                 .thenApply(authResponseDtoCompletableFuture -> {
                     logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
@@ -315,7 +316,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                     logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                             .with(EMAIL_KEY,  userDto.getEmail())
                             .debug("requesting new access token for user identified by {}", userDto.getEmail());
-                    return authorizationApiService.requestToken(authRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
+                    return authorizationApiService.requestToken(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
                 })
                 .thenCompose(tokenDtoCompletableFuture -> tokenDtoCompletableFuture)
                 .thenApply(tokenDto -> {
@@ -341,6 +342,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                         logger.with(EVENT_KEY, Events.USER_PASSWORD_RESET)
                                 .with(STATUS_CODE_KEY, HttpStatus.NOT_FOUND)
                                 .with(EMAIL_KEY,  userDto.getEmail())
+                                .with(TRACE_ID_MDC_KEY, mdcAdapter.get(TRACE_ID_MDC_KEY))
                                 .debug(message+". user to: {}  -  HttpCode: {}", userDto.getEmail(), HttpStatus.NOT_FOUND);
                         return responseEntity;
                     }
@@ -351,7 +353,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
 
   public CompletableFuture<String> getFunnyCat(){
     CompletableFuture<String> result = giphyApiService
-            .getGiphy("funny+cat", "dc6zaTOxFJmzC").thenApply((res) -> res);
+            .getGiphy("funny+cat", "dc6zaTOxFJmzC", MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)).thenApply((res) -> res);
     return result;
   }
 

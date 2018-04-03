@@ -1,6 +1,8 @@
 package com.quantal.exchange.users.dto;
 
 import com.quantal.exchange.users.enums.EmailType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -8,8 +10,11 @@ import lombok.Data;
  */
 
 @Data
+@Builder
+@AllArgsConstructor
 public class EmailRequestDto {
 
+    public EmailRequestDto(){}
     private String to;
     private EmailType emailType;
     private String  token;

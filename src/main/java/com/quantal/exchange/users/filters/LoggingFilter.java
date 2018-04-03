@@ -29,8 +29,8 @@ import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
  */
 
 
-@Component
-@Configurable
+//@Component
+//@Configurable
 public class LoggingFilter extends GenericFilterBean {
 
 

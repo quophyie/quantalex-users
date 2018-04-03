@@ -6,6 +6,7 @@ import com.quantal.exchange.users.enums.GenderEnum;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
@@ -40,6 +41,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -95,6 +98,8 @@ public class UserServiceTests {
                 nullSkippingOrikaBeanMapper,
                 apiGatewayService,
                 passwordService);
+        given(mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
 
         passwordValidator = new PasswordValidator(Arrays.asList( new CharacterRule(EnglishCharacterData.Digit, 1)));
     }
@@ -346,7 +351,7 @@ public class UserServiceTests {
                 updatedUserLastName,
                 null,
                 null,
-                null,
+                GenderEnum.F,
                 null);
 
         User persistedUser = UserTestUtil.createUserModel(userId,
@@ -394,7 +399,7 @@ public class UserServiceTests {
                 null,
                 null,
                 updatePassword,
-                null,
+                GenderEnum.M,
                 null);
 
         User persistedUser = UserTestUtil.createUserModel(userId,
@@ -442,7 +447,7 @@ public class UserServiceTests {
                 null,
                 null,
                 updatePassword,
-                null,
+                GenderEnum.F,
                 null);
 
         User persistedUser = UserTestUtil.createUserModel(userId,
@@ -496,7 +501,7 @@ public class UserServiceTests {
                 null,
                 updateEmail,
                 null,
-                null,
+                GenderEnum.F,
                 null);
 
         User persistedUser = UserTestUtil.createUserModel(userId,
@@ -516,7 +521,7 @@ public class UserServiceTests {
                 "userLName",
                 "user2@quant.com",
                 null,
-                null,
+                GenderEnum.F,
                 null);
 
         List<User> users = Arrays.asList(persistedUser, updateModel2);

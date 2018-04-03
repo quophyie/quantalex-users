@@ -6,6 +6,7 @@ import com.quantal.javashared.beanpostprocessors.LoggerInjectorBeanPostProcessor
 import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.LogzioConfig;
+import com.quantal.javashared.filters.LoggingFilter;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.aspectj.EnableSpringConfigured;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.annotation.Order;
 import org.springframework.instrument.classloading.InstrumentationLoadTimeWeaver;
 import org.springframework.instrument.classloading.LoadTimeWeaver;
 
@@ -152,6 +154,12 @@ public class SharedConfig {
         convertorsList.add(new GenderToGenderEnumOrikaBiConvertor());
         convertorsList.add(new UserStatusToUserStatusEnumOrikaBiConvertor());
         return convertorsList;
+    }
+
+    @Bean
+    @Order(1)
+    public LoggingFilter loggingFilter(){
+        return new LoggingFilter();
     }
 
 }

@@ -1,9 +1,19 @@
 package com.quantal.exchange.users.services.api;
 
-import com.quantal.exchange.users.dto.*;
-import retrofit2.http.*;
+import com.quantal.exchange.users.dto.ApiGatewayUserRequestDto;
+import com.quantal.exchange.users.dto.ApiGatewayUserResponseDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialRequestDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
+import com.quantal.exchange.users.dto.ApiJwtUserCredentialsListResponseDto;
+import com.quantal.javashared.constants.CommonConstants;
+import retrofit2.http.Body;
+import retrofit2.http.DELETE;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.Headers;
+import retrofit2.http.POST;
+import retrofit2.http.Path;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -18,15 +28,15 @@ public interface ApiGatewayService {
     @Headers({"Content-Type: application/json"})
     //@Headers({"Content-Type: x-www-form-urlencoded"})
     //@FormUrlEncoded
-    CompletableFuture<ApiJwtUserCredentialResponseDto> requestConsumerJwtCredentials(@Path("consumer") String apiUserId, @Body ApiJwtUserCredentialRequestDto requestDto);
+    CompletableFuture<ApiJwtUserCredentialResponseDto> requestConsumerJwtCredentials(@Path("consumer") String apiUserId, @Body ApiJwtUserCredentialRequestDto requestDto, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
     @GET("/consumers/{consumer}/jwt")
     @Headers({"Content-Type: application/json"})
-    CompletableFuture<ApiJwtUserCredentialsListResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId);
+    CompletableFuture<ApiJwtUserCredentialsListResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
 
     @DELETE("/consumers/{consumer}/jwt/{id}")
-    CompletableFuture<Object> deleteConsumerJwtCredentials(@Path("consumer") String apiUserId, @Path("id")String credentialId);
+    CompletableFuture<Object> deleteConsumerJwtCredentials(@Path("consumer") String apiUserId, @Path("id")String credentialId, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
 
 

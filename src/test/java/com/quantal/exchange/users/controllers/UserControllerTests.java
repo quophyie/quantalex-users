@@ -12,6 +12,8 @@ import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.models.User;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import com.quantal.javashared.constants.CommonConstants;
+import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.ResponseMessageDto;
 import com.quantal.javashared.logger.QuantalLogger;
@@ -23,8 +25,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.slf4j.MDC;
 import org.slf4j.spi.MDCAdapter;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,13 +39,17 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
+import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
+import static com.quantal.javashared.constants.CommonConstants.TRACE_ID_MDC_KEY;
 import static net.javacrumbs.jsonunit.JsonMatchers.jsonPartMatches;
 import static net.javacrumbs.jsonunit.spring.JsonUnitResultMatchers.json;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -58,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(value = UserController.class, secure = false)
+//@WebMvcTest(value = UserController.class, secure = false)
 //@ContextConfiguration(classes={WebStartupConfig.class, WebSecurityConfig.class})
 //@DataJpaTest
 //@SpringBootTest(/*webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT/*, classes = UsersApplication.class*/)
@@ -90,15 +96,27 @@ public class UserControllerTests {
     @Mock
     private MDCAdapter mdcAdapter;
 
+    @MockBean
+    private ExecutorService taskExecutor;
+
     @Before
     public void setUp() {
 
         userController = new UserController(userManagementFacade, null);
-        QuantalLogger logger = QuantalLoggerFactory.getLogger(UserController.class, new LoggerConfig());
-        ReflectionTestUtils.setField(userController, "logger", logger);
+        given(mdcAdapter.get(TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
+
+        MDC.put(TRACE_ID_MDC_KEY, TRACE_ID);
+        MDC.put(EVENT_KEY, TRACE_ID);
+
+        QuantalLogger quantalLogger = QuantalLoggerFactory.getLogger(UserManagementFacade.class,  LoggerConfig.builder().commonLogFields(new CommonLogFields()).build());
+        quantalLogger = (QuantalLogger) quantalLogger.with(TRACE_ID_MDC_KEY, TRACE_ID).with(CommonConstants.EVENT_KEY, "EVENT");
+
+        ReflectionTestUtils.setField(userController, "logger", quantalLogger);
         ExceptionHandlerControllerAdvice exceptionHandlerControllerAdvice = new ExceptionHandlerControllerAdvice(messageService);
-        ReflectionTestUtils.setField(exceptionHandlerControllerAdvice, "logger", logger);
-        mvc=  MockMvcBuilders.standaloneSetup(userController)
+        ReflectionTestUtils.setField(exceptionHandlerControllerAdvice, "logger", quantalLogger);
+
+        mvc =  MockMvcBuilders.standaloneSetup(userController)
                 .setControllerAdvice(exceptionHandlerControllerAdvice).build();
     }
 
@@ -179,7 +197,7 @@ public class UserControllerTests {
                                 .isEqualTo(updatedUserLastName))
                 .andExpect(
                         json()
-                                .node("to")
+                                .node("email")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
@@ -225,7 +243,7 @@ public class UserControllerTests {
                                 .isEqualTo(persistedUserLasttName))
                 .andExpect(
                         json()
-                                .node("to")
+                                .node("email")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
@@ -286,7 +304,7 @@ public class UserControllerTests {
 
         ResponseEntity response = new ResponseEntity(createdUserDto, HttpStatus.OK);
 
-        given(this.userManagementFacade.save(userDto, mdcAdapter))
+        given(this.userManagementFacade.save(userDto, MDC.getMDCAdapter()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.complete(response);
@@ -323,14 +341,14 @@ public class UserControllerTests {
                                 .isEqualTo(persistedUserLasttName))
                 .andExpect(
                         json()
-                                .node("to")
+                                .node("email")
                                 .isEqualTo(persistedUserEmail))
                 .andExpect(
                         json()
                                 .node("gender")
                                 .isEqualTo(persistedUserGenderEnum));
 
-        verify(userManagementFacade).save(userDto, mdcAdapter);
+        verify(userManagementFacade).save(userDto, MDC.getMDCAdapter());
     }
 
     @Test
@@ -343,7 +361,7 @@ public class UserControllerTests {
         ResponseEntity response = new ResponseEntity(new ResponseMessageDto("OK", 200), HttpStatus.OK);
 
 
-        given(this.userManagementFacade.requestPasswordReset(userDto.getEmail(), mdcAdapter))
+        given(this.userManagementFacade.requestPasswordReset(userDto.getEmail(), MDC.getMDCAdapter()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.complete(response);
@@ -364,7 +382,7 @@ public class UserControllerTests {
                         json()
                                 .node("message")
                                 .isEqualTo("OK"));
-        verify(userManagementFacade).requestPasswordReset(userDto.getEmail(), mdcAdapter);
+        verify(userManagementFacade).requestPasswordReset(userDto.getEmail(), MDC.getMDCAdapter());
     }
 
 
@@ -382,7 +400,7 @@ public class UserControllerTests {
 
         ResponseEntity response = new ResponseEntity(tokenDto, HttpStatus.OK);
 
-        given(this.userManagementFacade.resetPassword(userDto))
+        given(this.userManagementFacade.resetPassword(userDto, MDC.getMDCAdapter()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.complete(response);
@@ -404,7 +422,7 @@ public class UserControllerTests {
                                 .node("token")
                                 .isEqualTo(tokenDto.getToken()));
 
-        verify(userManagementFacade).resetPassword(userDto);
+        verify(userManagementFacade).resetPassword(userDto, MDC.getMDCAdapter());
     }
 
     @Test
@@ -422,7 +440,7 @@ public class UserControllerTests {
                 null);
         createdUserDto.setConfirmedPassword(persistedUserPassword);
 
-        given(userManagementFacade.save(createdUserDto, mdcAdapter))
+        given(userManagementFacade.save(createdUserDto, MDC.getMDCAdapter()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture completableFuture = new CompletableFuture();
                     completableFuture.completeExceptionally(new NullPointerException(errMsg));
@@ -436,7 +454,7 @@ public class UserControllerTests {
 
         mvc.perform(asyncDispatch(asyscResult))
                 .andExpect(status().isBadRequest());
-        verify(userManagementFacade, times(1)).save(eq(createdUserDto), mdcAdapter);
+        verify(userManagementFacade, times(1)).save(createdUserDto, MDC.getMDCAdapter());
     }
 
     @Test
@@ -460,7 +478,7 @@ public class UserControllerTests {
         createUserDto.setConfirmedPassword(persistedModelPassword);
 
         given(this.userManagementFacade
-                .save(createUserDto, mdcAdapter))
+                .save(createUserDto, MDC.getMDCAdapter()))
                 .willAnswer(invocationOnMock -> {
                     CompletableFuture future = new CompletableFuture();
                     future.completeExceptionally(new AlreadyExistsException(errMsg));
@@ -476,7 +494,7 @@ public class UserControllerTests {
         mvc.perform(asyncDispatch(asyscResult))
                 .andExpect(status().isConflict());
 
-        verify(userManagementFacade, times(1)).save(eq(createUserDto), mdcAdapter);
+        verify(userManagementFacade, times(1)).save(createUserDto, MDC.getMDCAdapter());
     }
 
     @Test
@@ -489,7 +507,7 @@ public class UserControllerTests {
         userDto.setConfirmedPassword(persistedConfirmedUserPassword);
 
 
-        given(userManagementFacade.resetPassword(userDto )).willAnswer(invocation -> {
+        given(userManagementFacade.resetPassword(userDto, MDC.getMDCAdapter() )).willAnswer(invocation -> {
             CompletableFuture completableFuture = new CompletableFuture();
             completableFuture.completeExceptionally(new PasswordValidationException("password exception"));
             return completableFuture;
@@ -503,7 +521,7 @@ public class UserControllerTests {
         mvc.perform(asyncDispatch(asyscResult))
                 .andExpect(status().isBadRequest());
 
-        verify(userManagementFacade).resetPassword(userDto );
+        verify(userManagementFacade).resetPassword(userDto, MDC.getMDCAdapter() );
 
 
     }

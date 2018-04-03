@@ -38,7 +38,7 @@ public class ExceptionHandlerControllerAdvice {
     }
 
    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    //@ExceptionHandler(Throwable.class)
+    @ExceptionHandler(Throwable.class)
     //@ResponseBody
     public ResponseEntity handleThrowable(final Throwable ex) {
         logger.error("Unexpected error", ex);
@@ -61,6 +61,7 @@ public class ExceptionHandlerControllerAdvice {
             HttpStatus status = HttpStatus.valueOf(((HttpException) businessEx).code());
             responseEntity = toRESTResponse(null, businessEx.getMessage(), status);
         }
+
         logger.error(ex.getMessage(),ex);
         return responseEntity;
     }

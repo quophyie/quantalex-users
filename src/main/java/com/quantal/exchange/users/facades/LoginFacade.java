@@ -63,7 +63,7 @@ public class LoginFacade extends AbstractBaseFacade {
     public CompletableFuture<ResponseEntity> login(LoginDto loginDto, MDCAdapter mdcAdapter){
         String email = loginDto != null ? loginDto.getEmail() : "";
 
-        logger.with(EMAIL_KEY, "to")
+        logger.with(EMAIL_KEY, email)
               .with(EVENT_KEY, "LOGIN")
               .debug(String.format("Logging in user with to: %s", email));
 

@@ -16,6 +16,7 @@ import com.quantal.exchange.users.services.api.ApiGatewayService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -260,7 +261,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
         public CompletableFuture<ApiJwtUserCredentialResponseDto> requestApiGatewayUserCredentials(String username){
              ApiJwtUserCredentialRequestDto requestDto = createApiJwtUserCredentialRequestDto();
-            return apiGatewayService.requestConsumerJwtCredentials(username, requestDto);
+            return apiGatewayService.requestConsumerJwtCredentials(username, requestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
         }
 
 

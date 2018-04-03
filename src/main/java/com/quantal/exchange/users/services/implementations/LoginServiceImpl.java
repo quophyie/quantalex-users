@@ -74,10 +74,8 @@ public class LoginServiceImpl implements LoginService {
     //@Async
     public CompletableFuture<String> login(String email, String password, MDCAdapter mdcAdapter) {
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("to", email);
 
-       logger.with("to", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
+       logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
        return userService.findOneByEmail(email, mdcAdapter)
                 .thenApplyAsync(user -> {
                     if (user == null) {
@@ -86,7 +84,7 @@ public class LoginServiceImpl implements LoginService {
                         throw logger.throwing(new NotFoundException(message));
                     }
 
-                    logger.with("to", email)
+                    logger.with("email", email)
                           .with("user", user)
                           .info(String.format("found user identified by %s",email), new LogEvent("LOGGING_IN"));
                     return user;
@@ -96,11 +94,11 @@ public class LoginServiceImpl implements LoginService {
                        throw logger.throwing(new PasswordValidationException(""));
                    }
 
-                   logger.with("to", email)
+                   logger.with("email", email)
                          .debug(String.format("Requesting login token for %s ... ", email), new LogEvent("LOGGING_IN"));
                    AuthRequestDto authRequestDto = new AuthRequestDto();
                    authRequestDto.setEmail(email);
-                   return authorizationApiService.requestToken(authRequestDto,MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY) ,MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY));
+                   return authorizationApiService.requestToken(authRequestDto ,mdcAdapter.get(CommonConstants.EVENT_KEY),mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
                }, taskExecutor)
               // .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
                .thenCompose(tokenCompletableFuture -> tokenCompletableFuture)
@@ -138,7 +136,7 @@ public class LoginServiceImpl implements LoginService {
                     .with(CommonConstants.EVENT_KEY, "LOG_OUT")
                     .debug(String.format("Contacting authorization service to delete token with jti %s ...", jti));
             return authorizationApiService
-                    .deleteToken(jti)
+                    .deleteToken(jti, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY))
                     .thenApply(authResponseDto -> null);
 
         } catch (SignatureException | UnsupportedEncodingException se) {

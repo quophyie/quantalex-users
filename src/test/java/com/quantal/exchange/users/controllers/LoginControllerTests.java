@@ -4,7 +4,11 @@ import com.quantal.exchange.users.controlleradvice.ExceptionHandlerControllerAdv
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.dto.TokenDto;
 import com.quantal.exchange.users.facades.LoginFacade;
+import com.quantal.exchange.users.facades.UserManagementFacade;
+import com.quantal.javashared.constants.CommonConstants;
+import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.TestUtil;
@@ -25,8 +29,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.concurrent.CompletableFuture;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
 import static net.javacrumbs.jsonunit.spring.JsonUnitResultMatchers.json;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,12 +63,18 @@ public class LoginControllerTests {
 
     @Mock
     private MDCAdapter mdcAdapter;
+
     @Before
     public void setUp() {
 
+        given(mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
+        QuantalLogger quantalLogger = QuantalLoggerFactory.getLogger(UserManagementFacade.class,  LoggerConfig.builder().commonLogFields(new CommonLogFields()).build());
+        quantalLogger = (QuantalLogger) quantalLogger.with(CommonConstants.TRACE_ID_MDC_KEY, TRACE_ID).with(CommonConstants.EVENT_KEY, "EVENT");
+
 
         loginController = new LoginController(loginFacade, null);
-        ReflectionTestUtils.setField(loginController, "logger", QuantalLoggerFactory.getLogger(LoginFacade.class, new LoggerConfig()));
+        ReflectionTestUtils.setField(loginController, "logger", quantalLogger);
        mvc=  MockMvcBuilders.standaloneSetup(loginController)
                 .setControllerAdvice(new ExceptionHandlerControllerAdvice(messageService)).build();
 
@@ -74,7 +88,7 @@ public class LoginControllerTests {
         loginDto.setPassword("password");
         String jwt = "jwt_token";
 
-        given(loginFacade.login(loginDto, mdcAdapter)).willAnswer(invocationOnMock -> {
+        given(loginFacade.login(eq(loginDto), any(MDCAdapter.class))).willAnswer(invocationOnMock -> {
             TokenDto tokenDto = new TokenDto();
             tokenDto.setToken(jwt);
             ResponseEntity<?> responseEntity = new ResponseEntity<>(tokenDto,HttpStatus.OK);

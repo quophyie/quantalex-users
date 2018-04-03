@@ -1,6 +1,7 @@
 package com.quantal.exchange.users.facades;
 
 
+import com.quantal.exchange.users.constants.EmailTemplates;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.ApiJwtUserCredentialResponseDto;
 import com.quantal.exchange.users.dto.AuthRequestDto;
@@ -23,8 +24,11 @@ import com.quantal.exchange.users.services.api.GiphyApiService;
 import com.quantal.exchange.users.services.interfaces.PasswordService;
 import com.quantal.exchange.users.services.interfaces.UserService;
 import com.quantal.exchange.users.util.UserTestUtil;
+import com.quantal.javashared.constants.CommonConstants;
+import com.quantal.javashared.dto.CommonLogFields;
 import com.quantal.javashared.dto.LoggerConfig;
 import com.quantal.javashared.dto.ResponseDto;
+import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.logger.QuantalLoggerFactory;
 import com.quantal.javashared.objectmapper.NullSkippingOrikaBeanMapper;
 import com.quantal.javashared.objectmapper.OrikaBeanMapper;
@@ -32,6 +36,7 @@ import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
 import com.quantal.javashared.util.TestUtil;
 import org.assertj.core.api.Assertions;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -42,6 +47,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.passay.RuleResult;
+import org.slf4j.MDC;
 import org.slf4j.spi.MDCAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,7 +56,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -58,10 +63,13 @@ import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static com.quantal.exchange.users.constants.TestConstants.EVENT;
+import static com.quantal.exchange.users.constants.TestConstants.TRACE_ID;
 import static org.assertj.core.api.Java6Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -72,12 +80,22 @@ import static org.mockito.Mockito.verify;
 //@WebMvcTest(UserManagementFacade.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
+/*@TestPropertySource(properties = {
         "DB_HOST=localhost",
+        "spring.datasource.driverClassName=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialec",
+        "flyway.url= jdbc:h2:mem:quantal_exchange_users;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL",
+        "flyway.user= sa",
+        "flyway.password=",
+        "flyway.locations=classpath:db/migration",
+        "flyway.baseline-on-migrate=true",
         "DB_PORT=5432",
+        "spring.datasource.url=jdbc:h2:mem:quantal_exchange_users;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL",
         "API_GATEWAY_ENDPOINT=http://localhost"
 
-})
+})*/
 public class UserManagementFacadesTest {
 
 
@@ -121,9 +139,6 @@ public class UserManagementFacadesTest {
     @MockBean
     private EmailApiService emailApiService;
 
-    @MockBean
-    org.zalando.tracer.Tracer tracer;
-
 
     @InjectMocks
     private UserManagementFacade userManagementFacade;
@@ -131,6 +146,7 @@ public class UserManagementFacadesTest {
 
     @Mock
     private MDCAdapter mdcAdapter;
+
 
     @Before
     public void setUp(){
@@ -146,8 +162,26 @@ public class UserManagementFacadesTest {
                passwordService);
         environmentVariables.set("DB_HOST", "localhost");
 
-        ReflectionTestUtils.setField(userManagementFacade, "logger", QuantalLoggerFactory.getLogger(UserManagementFacade.class, new LoggerConfig()));
+        mdcAdapter.put(CommonConstants.TRACE_ID_MDC_KEY, TRACE_ID);
+        mdcAdapter.put(CommonConstants.EVENT_KEY, EVENT);
 
+        QuantalLogger quantalLogger = QuantalLoggerFactory.getLogger(UserManagementFacade.class,  LoggerConfig.builder().commonLogFields(new CommonLogFields()).build());
+        quantalLogger = (QuantalLogger) quantalLogger.with(CommonConstants.TRACE_ID_MDC_KEY, TRACE_ID).with(CommonConstants.EVENT_KEY, "EVENT");
+        ReflectionTestUtils.setField(userManagementFacade, "logger", quantalLogger);
+
+        given(mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)).willReturn(TRACE_ID);
+        given(mdcAdapter.get(CommonConstants.EVENT_KEY)).willReturn(EVENT);
+    }
+
+    @After
+    public void tearDown(){
+        reset(mdcAdapter);
+        reset(messageService);
+        reset(authorizationApiService);
+        reset(passwordService);
+        reset(authorizationApiService);
+        reset(emailApiService);
+        reset(giphyApiService);
     }
 
     @Test
@@ -197,8 +231,14 @@ public class UserManagementFacadesTest {
         TokenDto tokenDto = new TokenDto();
         tokenDto.setToken(jwt);
 
+        EmailRequestDto emailRequestDto = EmailRequestDto.builder()
+                .to(userModelFromDto.getEmail()).build();
+
+        EmailResponseDto emailResponseDto = EmailResponseDto.builder().code(200).build();
+
+
         given(this.userService
-                .createUser(eq(userModelFromDto), mdcAdapter))
+                .createUser(userModelFromDto, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(createdModel));
 
 
@@ -213,11 +253,14 @@ public class UserManagementFacadesTest {
         given(this.messageService.getMessage(MessageCodes.ENTITY_CREATED, replacements))
                 .willReturn(successMsg);
 
-        given(authorizationApiService.requestUserCredentials(eq(authRequestDto)))
+        given(authorizationApiService.requestUserCredentials(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture( null));
 
-        given(authorizationApiService.requestToken(eq(authRequestDto), "EVENT", "TRACE_ID"))
+        given(authorizationApiService.requestToken(authRequestDto, EVENT, TRACE_ID))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
+
+        given(emailApiService.sendEmailByTemplate(EmailTemplates.NEW_USER_TEMPLATE, emailRequestDto, EVENT, TRACE_ID))
+                .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(emailResponseDto));
 
         ResponseEntity<?> responseEntity = userManagementFacade.save(createUserDto, mdcAdapter).get();
         UserDto result = ((ResponseDto<UserDto>)responseEntity.getBody()).getData();
@@ -239,8 +282,9 @@ public class UserManagementFacadesTest {
 
         verify(userService, times(1)).createUser(userModelFromDto, mdcAdapter);
         verify(this.messageService).getMessage(MessageCodes.ENTITY_CREATED, replacements);
-        verify(this.authorizationApiService).requestUserCredentials(authRequestDto);
-        verify(this.authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
+        verify(this.authorizationApiService).requestUserCredentials(authRequestDto, EVENT, TRACE_ID);
+        verify(this.authorizationApiService).requestToken(authRequestDto, EVENT, TRACE_ID);
+        verify(emailApiService).sendEmailByTemplate(EmailTemplates.NEW_USER_TEMPLATE, emailRequestDto, EVENT, TRACE_ID);
 //          verify(this.userService).requestApiGatewayUserCredentials(persistedModelEmail);
     }
 
@@ -362,7 +406,7 @@ public class UserManagementFacadesTest {
                 null,
                 persistedModelEmail,
                 null,
-                null,
+                GenderEnum.F,
                 null);
 
         String msgSvcMsg = "already exists";
@@ -598,7 +642,7 @@ public class UserManagementFacadesTest {
 
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(successMsg);
         given(userService.findOne(userId)).willAnswer(invocationOnMock -> CompletableFuture.completedFuture(persistedModel));
-        given(authorizationApiService.deleteUserCredentials(persistedModel.getEmail())).willAnswer(invocation -> CompletableFuture.completedFuture(new AuthResponseDto()));
+        given(authorizationApiService.deleteUserCredentials(persistedModel.getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY))).willAnswer(invocation -> CompletableFuture.completedFuture(new AuthResponseDto()));
 
         doAnswer(invocationOnMock -> CompletableFuture.completedFuture(null)).when(userService)
                 .deleteById(userId);
@@ -612,7 +656,7 @@ public class UserManagementFacadesTest {
 
         verify(userService).deleteById(userId);
         verify(userService).findOne(userId);
-        verify(authorizationApiService).deleteUserCredentials(persistedModel.getEmail());
+        verify(authorizationApiService).deleteUserCredentials(persistedModel.getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
         verify(messageService).getMessage(MessageCodes.SUCCESS);
 
     }
@@ -726,7 +770,7 @@ public class UserManagementFacadesTest {
                 null,
                 null,
                 persistedModelPassword,
-                null, null);
+                GenderEnum.F, null);
 
         given(this.userService
                 .updateUser(userUpdateData))
@@ -801,18 +845,18 @@ public class UserManagementFacadesTest {
 
         EmailRequestDto emailRequestDto = new EmailRequestDto();
         emailRequestDto.setTo(persistedModelEmail);
-        emailRequestDto.setToken(tokenDto.getToken());
-        emailRequestDto.setEmailType(EmailType.PasswordReset);
+        //emailRequestDto.setToken(tokenDto.getToken());
+        //emailRequestDto.setEmailType(EmailType.PasswordReset);
 
 
         // Given
         given(messageService.getMessage(MessageCodes.SUCCESS)).willReturn(message);
         given(userService.findOneByEmail(persistedModelEmail, mdcAdapter))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(user));
-        given(authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
+        given(authorizationApiService.requestToken(authRequestDto, EVENT, TRACE_ID))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
-        given(emailApiService.sendEmail(emailRequestDto))
+        given(emailApiService.sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto, EVENT, TRACE_ID))
                 .willAnswer(invocationOnMock ->{
                     EmailResponseDto emailResponseDto = new EmailResponseDto();
                     return CompletableFuture.completedFuture(emailResponseDto);
@@ -824,8 +868,8 @@ public class UserManagementFacadesTest {
 
         verify(messageService).getMessage(MessageCodes.SUCCESS);
         verify(userService).findOneByEmail(persistedModelEmail, mdcAdapter);
-        verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
-        verify(emailApiService).sendEmail(emailRequestDto);
+        verify(authorizationApiService).requestToken(authRequestDto, EVENT, TRACE_ID);
+        verify(emailApiService).sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto, EVENT, TRACE_ID);
     }
 
     @Test
@@ -845,7 +889,7 @@ public class UserManagementFacadesTest {
         given(messageService.getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements )).willReturn(errMsg);
 
         // When
-         ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+         ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto, mdcAdapter).get();
          HttpStatus httpStatus = responseEntity.getStatusCode();
          assertThat(httpStatus).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(messageService).getMessage(MessageCodes.NULL_OR_EMPTY_DATA, replacements );
@@ -873,7 +917,7 @@ public class UserManagementFacadesTest {
 
 
         // When
-        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         assertThat(httpStatus).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(messageService).getMessage(MessageCodes.INVALID_EMAIL_OR_PASSWORD);
@@ -904,7 +948,7 @@ public class UserManagementFacadesTest {
         given(passwordService.checkPasswordValidity(userDto.getPassword() )).willReturn(ruleResult);
 
         // When
-        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         assertThat(httpStatus).isEqualTo(HttpStatus.NOT_FOUND);
         verify(messageService).getMessage(MessageCodes.NOT_FOUND, replacements);
@@ -964,7 +1008,7 @@ public class UserManagementFacadesTest {
         given(authorizationApiService.requestToken(authRequestDto, "EVENT", "TRACE_ID"))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(tokenDto));
 
-        given(authorizationApiService.deleteAllTokens(user.getEmail()))
+        given(authorizationApiService.deleteAllTokens(user.getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(new AuthResponseDto()));
 
         given(userService.saveOrUpdate(updatedUser))
@@ -973,7 +1017,7 @@ public class UserManagementFacadesTest {
         given(passwordService.checkPasswordValidity(userDto.getPassword()))
                 .willReturn(ruleResult);
         // When
-        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto).get();
+        ResponseEntity responseEntity = userManagementFacade.resetPassword(userDto, mdcAdapter).get();
         HttpStatus httpStatus = responseEntity.getStatusCode();
         assertThat(httpStatus).isEqualTo(HttpStatus.OK);
 
@@ -981,7 +1025,7 @@ public class UserManagementFacadesTest {
         verify(userService).findOneByEmail(persistedModelEmail, mdcAdapter);
         verify(userService).saveOrUpdate(updatedUser);
         verify(authorizationApiService).requestToken(authRequestDto, "EVENT", "TRACE_ID");
-        verify(authorizationApiService).deleteAllTokens(user.getEmail());
+        verify(authorizationApiService).deleteAllTokens(user.getEmail(), MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
         verify(passwordService).checkPasswordValidity(userDto.getPassword());
     }
 
