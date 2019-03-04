@@ -95,6 +95,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
 
     @Override
     public CompletableFuture<User> createUser(User user, MDCAdapter mdcAdapter) {
+
         if (!ObjectUtils.allNotNull(user)) {
             throw new NullPointerException(messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED));
         }
@@ -112,7 +113,7 @@ public class UserServiceImpl extends AbstractRepositoryServiceAsync<User, Long> 
                     checkAndSetPassword(user.getPassword(),user);
                     ApiGatewayUserRequestDto gatewayUserDto = this.createApiGatewayUserDto(null, user.getEmail());
 
-                    return apiGatewayService.addUer(gatewayUserDto)
+                    return apiGatewayService.addUer(gatewayUserDto, mdcAdapter.get(CommonConstants.EVENT_KEY),mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY))
                             .thenCompose(gwayUserResponse -> {
                                 nullSkippingMapper.map(gwayUserResponse, gatewayUserResponse);
                                 user.setApiUserId(gwayUserResponse.getId());

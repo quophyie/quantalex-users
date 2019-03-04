@@ -115,7 +115,9 @@ public class SharedConfig {
 
     @Bean
     public LogzioConfig logzioConfig(@Value("${logzio.token}") String logzioToken) {
-        return QuantalLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
+        LogzioConfig logzioConfig = QuantalLoggerFactory.createDefaultLogzioConfig(logzioToken, Optional.empty(), Optional.empty());
+        logzioConfig.setInMemory(false);
+        return logzioConfig;
     }
 
 

@@ -30,6 +30,7 @@ import org.passay.CharacterRule;
 import org.passay.EnglishCharacterData;
 import org.passay.PasswordValidator;
 import org.passay.RuleResult;
+import org.slf4j.MDC;
 import org.slf4j.spi.MDCAdapter;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -245,7 +246,8 @@ public class UserServiceTests {
 
 
         // **** RETURNING AN ANSWER ****
-        given(apiGatewayService.addUer(apiGatewayUserRequestDto)).willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
+        given(apiGatewayService.addUer(apiGatewayUserRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
+                .willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
 
         // When
         CompletableFuture completableFutureResult = userService.createUser(userToSave, mdcAdapter);
@@ -258,7 +260,8 @@ public class UserServiceTests {
 
         verify(userRepository).save(eq(userToSave));
         verify(userRepository).findOneByEmail(userToSave.getEmail());
-        verify(apiGatewayService).addUer(apiGatewayUserRequestDto);
+        verify(apiGatewayService).addUer(apiGatewayUserRequestDto,
+                MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
         verify(passwordService).hashPassword(userToSave.getPassword());
         verify(passwordService).checkPasswordValidity(userToSave.getPassword());
 

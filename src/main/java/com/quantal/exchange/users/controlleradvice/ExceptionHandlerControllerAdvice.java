@@ -5,15 +5,16 @@ import com.quantal.exchange.users.exceptions.AlreadyExistsException;
 import com.quantal.exchange.users.exceptions.NotFoundException;
 import com.quantal.exchange.users.exceptions.PasswordValidationException;
 import com.quantal.javashared.annotations.logger.InjectLogger;
+import com.quantal.javashared.filters.EventAndTraceIdMdcPopulatingFilter;
 import com.quantal.javashared.logger.QuantalLogger;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestController;
 import retrofit2.HttpException;
 
 import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
@@ -21,15 +22,19 @@ import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
 /**
  * Created by dman on 08/07/2017.
  */
-@RestController
+//@RestController
 @ControllerAdvice
-//@Slf4j
-public class ExceptionHandlerControllerAdvice {
+@Slf4j
+public class ExceptionHandlerControllerAdvice  {
 
     @InjectLogger
     private QuantalLogger logger;
 
     private MessageService messageService;
+
+    @Autowired
+    private EventAndTraceIdMdcPopulatingFilter eventAndTraceIdPopulatingFilter;
+
 
     @Autowired
     public ExceptionHandlerControllerAdvice(MessageService messageService) {
@@ -41,7 +46,8 @@ public class ExceptionHandlerControllerAdvice {
     @ExceptionHandler(Throwable.class)
     //@ResponseBody
     public ResponseEntity handleThrowable(final Throwable ex) {
-        logger.error("Unexpected error", ex);
+        CommonUtils.tryUpdateMDCWithEventAndTraceIdIfMissingFromMDC(ex, eventAndTraceIdPopulatingFilter);
+        logger.error(String.format("Unexpected error: %s", ex.getMessage()), ex);
         ResponseEntity responseEntity = toRESTResponse(null,
                 messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR),
                 HttpStatus.INTERNAL_SERVER_ERROR);
@@ -62,9 +68,8 @@ public class ExceptionHandlerControllerAdvice {
             responseEntity = toRESTResponse(null, businessEx.getMessage(), status);
         }
 
-        logger.error(ex.getMessage(),ex);
+        logger.error(ex.getMessage(), ex);
         return responseEntity;
     }
-
 
 }

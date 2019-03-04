@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface ApiGatewayService {
     @POST("/consumers")
-    CompletableFuture<ApiGatewayUserResponseDto> addUer(@Body ApiGatewayUserRequestDto user);
+    CompletableFuture<ApiGatewayUserResponseDto> addUer(@Body ApiGatewayUserRequestDto user, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
 
     @POST("/consumers/{consumer}/jwt")

@@ -9,15 +9,21 @@ import com.quantal.exchange.users.jsonviews.UserViews;
 import com.quantal.exchange.users.validators.password.PasswordMatches;
 import com.quantal.javashared.controller.BaseControllerAsync;
 import com.quantal.javashared.jsonviews.DefaultJsonView;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-import org.slf4j.MDC;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -30,6 +36,7 @@ import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
 
 @RestController
 @RequestMapping("/users")
+@Slf4j
 public class UserController extends BaseControllerAsync {
 
   private UserManagementFacade userManagementFacade;
