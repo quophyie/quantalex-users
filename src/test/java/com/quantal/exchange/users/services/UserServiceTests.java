@@ -246,7 +246,7 @@ public class UserServiceTests {
 
 
         // **** RETURNING AN ANSWER ****
-        given(apiGatewayService.addUer(apiGatewayUserRequestDto, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY)))
+        given(apiGatewayService.addUer(apiGatewayUserRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
                 .willAnswer(invocation -> CompletableFuture.completedFuture(new ApiGatewayUserResponseDto()));
 
         // When
@@ -261,7 +261,7 @@ public class UserServiceTests {
         verify(userRepository).save(eq(userToSave));
         verify(userRepository).findOneByEmail(userToSave.getEmail());
         verify(apiGatewayService).addUer(apiGatewayUserRequestDto,
-                MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY));
+                mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
         verify(passwordService).hashPassword(userToSave.getPassword());
         verify(passwordService).checkPasswordValidity(userToSave.getPassword());
 

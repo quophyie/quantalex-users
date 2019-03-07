@@ -24,7 +24,6 @@ import static com.quantal.javashared.facades.AbstractBaseFacade.toRESTResponse;
  */
 //@RestController
 @ControllerAdvice
-@Slf4j
 public class ExceptionHandlerControllerAdvice  {
 
     @InjectLogger

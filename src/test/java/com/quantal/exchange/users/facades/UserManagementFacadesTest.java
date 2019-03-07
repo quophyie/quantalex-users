@@ -35,9 +35,11 @@ import com.quantal.javashared.objectmapper.OrikaBeanMapper;
 import com.quantal.javashared.services.interfaces.MessageService;
 import com.quantal.javashared.util.CommonUtils;
 import com.quantal.javashared.util.TestUtil;
+import de.invesdwin.instrument.DynamicInstrumentationLoader;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -147,6 +149,13 @@ public class UserManagementFacadesTest {
     @Mock
     private MDCAdapter mdcAdapter;
 
+
+    @BeforeClass
+    public static void beforeClass(){
+        //Starts the aspectj weaver so that we can weave the compile time aspects
+        DynamicInstrumentationLoader.waitForInitialized(); //dynamically attach java agent to jvm if not already present
+        DynamicInstrumentationLoader.initLoadTimeWeavingContext(); //weave all classes before they are loaded as beans
+    }
 
     @Before
     public void setUp(){
