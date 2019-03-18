@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 networks:
   default:
     external:
@@ -10,11 +10,12 @@ services:
       context: ./../../
       dockerfile: ./docker/Dockerfile
     ports:
-      - "8080:8080"
-      - "5015:5015"
+      - ${WEB_APP_PORT:-9080}:8080
+      # - 5015:5015
     environment:
       - DB_HOST=postgres_quantal_users
       - DB_PORT=5432
+      - LOGZIO_TOKEN=${LOGZIO_TOKEN}
       - JWT_SECRET=${JWT_SECRET}
       - PASSWORD_SALT=${PASSWORD_SALT}
       - JWT_TYPE=${JWT_TYPE}
@@ -26,6 +27,8 @@ services:
       - postgres_quantal_users
     depends_on:
       - postgres_quantal_users
+     # Note: The port specified in the wait-for-it.sh script is the port that the  container exposes on the coontainer  side and not
+     # the host side
     command: ["/wait-for-it.sh", "postgres_quantal_users:5432", "--", "java",  "-jar", "/opt/app/quantalex-users-0.0.1-SNAPSHOT.jar"]
     volumes:
       - /private/var/docker/log/quantalex_users:/var/log
@@ -38,7 +41,7 @@ services:
     restart: always
     image: sameersbn/postgresql:9.6-2
     ports:
-      - "5433:5432"
+      - ${DB_PORT_EXPOSED_ON_HOST:-5433}:5432
     environment:
       - DEBUG=false
       - DB_USER=postgres
