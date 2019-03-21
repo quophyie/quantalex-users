@@ -29,7 +29,7 @@ services:
       - postgres_quantal_users
      # Note: The port specified in the wait-for-it.sh script is the port that the  container exposes on the coontainer  side and not
      # the host side
-    command: ["/wait-for-it.sh", "postgres_quantal_users:5432", "--", "java",  "-jar", "/opt/app/quantalex-users-0.0.1-SNAPSHOT.jar"]
+    command: ["/wait-for-it.sh", "-t", "30", "postgres_quantal_users:5432", "--", "java",  "-jar", "/opt/app/quantalex-users-0.0.1-SNAPSHOT.jar"]
     volumes:
       - /private/var/docker/log/quantalex_users:/var/log
 
