@@ -66,7 +66,7 @@ public class LoginFacade extends AbstractBaseFacade {
 
         logger.with(EMAIL_KEY, email)
               .with(EVENT_KEY, Events.USER_LOGIN)
-              .debug(String.format("Logging in user with to: %s", email));
+              .debug(String.format("Logging in user with username / email: %s", email));
 
         if (loginDto == null) {
             String msg = messageService.getMessage(MessageCodes.NULL_DATA_PROVIDED);
@@ -79,7 +79,7 @@ public class LoginFacade extends AbstractBaseFacade {
         }
 
         return loginService.login(loginDto.getEmail(), loginDto.getPassword(), mdcAdapter)
-                .thenApplyAsync(token -> {
+                .thenApply(token -> {
                     TokenDto tokenDto = new TokenDto();
                     tokenDto.setToken(token);
 
@@ -89,7 +89,7 @@ public class LoginFacade extends AbstractBaseFacade {
 
                     ResponseEntity responseEntity = toRESTResponse(tokenDto, "");
                     return responseEntity;
-                }, taskExecutor)
+                })
                 .exceptionally(ex -> {
                     RuntimeException busEx = CommonUtils.extractBusinessExceptionAsRuntimeException(ex);
                     ResponseEntity responseEntity =  toRESTResponse(null, messageService.getMessage(MessageCodes.INTERNAL_SERVER_ERROR), HttpStatus.INTERNAL_SERVER_ERROR);

@@ -78,7 +78,7 @@ public class LoginServiceImpl implements LoginService {
 
        logger.with("email", email).info(String.format("Logging in user"), new LogEvent(Events.USER_LOGIN));
        return userService.findOneByEmail(email, mdcAdapter)
-                .thenApplyAsync(user -> {
+                .thenApply(user -> {
                     if (user == null) {
                         String message = String.format(messageService.getMessage(MessageCodes.NOT_FOUND, new String[]{User.class.getSimpleName()}));
 
@@ -89,8 +89,8 @@ public class LoginServiceImpl implements LoginService {
                           .with("user", user)
                           .info(String.format("found user identified by %s",email), new LogEvent(Events.USER_LOGIN));
                     return user;
-                }, taskExecutor)
-               .thenApplyAsync(user -> {
+                })
+               .thenApply(user -> {
                    if (!passwordService.checkPassword(password, user.getPassword())) {
                        throw logger.throwing(new PasswordValidationException(""));
                    }
@@ -100,7 +100,7 @@ public class LoginServiceImpl implements LoginService {
                    AuthRequestDto authRequestDto = new AuthRequestDto();
                    authRequestDto.setEmail(email);
                    return authorizationApiService.requestToken(authRequestDto ,mdcAdapter.get(CommonConstants.EVENT_KEY),mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
-               }, taskExecutor)
+               })
               // .handle((apiJwtUserResponseCompletableFuture, ex) -> CommonUtils.processHandle(apiJwtUserResponseCompletableFuture, ex))
                .thenCompose(tokenCompletableFuture -> tokenCompletableFuture)
                .thenApply(token -> token.getToken());

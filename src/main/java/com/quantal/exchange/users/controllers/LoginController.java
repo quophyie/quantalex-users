@@ -32,7 +32,7 @@ public class LoginController extends BaseControllerAsync{
         this.objectMapper = objectMapper;
     }
 
-    @PostMapping(value = "/login/", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public CompletableFuture<ResponseEntity<?>> login(@RequestBody LoginDto loginDto){
         MDC.put(CommonConstants.EVENT_KEY, Events.USER_LOGIN);
         return loginFacade.login(loginDto, MDC.getMDCAdapter())
