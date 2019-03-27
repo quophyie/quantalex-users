@@ -213,14 +213,14 @@ public class UserManagementFacade extends AbstractBaseFacade {
         authRequestDto.setTokenType(TokenType.PasswordReset);
         authRequestDto.setEmail(email);
 
-        logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
+        logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET_REQUEST )
                 .with(EMAIL_KEY, email)
                 .debug("requesting password reset token for {} ...", email);
            return userService.findOneByEmail(email, mdcAdapter)
                    .thenApply(user -> authorizationApiService.requestToken(authRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY)))
                    .thenCompose(tokenDto -> tokenDto)
                    .thenCompose(tokenDto -> {
-                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
+                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET_REQUEST)
                                .with(EMAIL_KEY, email)
                                .with("token", tokenDto.getToken())
                                .debug("token request success: token:  {} ", tokenDto.getToken());
@@ -229,7 +229,7 @@ public class UserManagementFacade extends AbstractBaseFacade {
                        //emailRequestDto.setToken(tokenDto.getToken());
                        //emailRequestDto.setEmailType(EmailType.PasswordReset);
 
-                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET)
+                       logger.with(SUB_EVENT_KEY, Events.USER_PASSWORD_RESET_REQUEST)
                                .with(EMAIL_KEY, email)
                                .debug("sending password reset to to {}", email);
                        return emailApiService.sendEmailByTemplate(EmailTemplates.PASSWORD_RESET_TEMPLATE, emailRequestDto, mdcAdapter.get(CommonConstants.EVENT_KEY), mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));

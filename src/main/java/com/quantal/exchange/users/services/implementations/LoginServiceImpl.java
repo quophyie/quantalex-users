@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.services.implementations;
 
+import com.quantal.exchange.users.constants.Events;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.AuthRequestDto;
 import com.quantal.exchange.users.exceptions.NotFoundException;
@@ -75,7 +76,7 @@ public class LoginServiceImpl implements LoginService {
     public CompletableFuture<String> login(String email, String password, MDCAdapter mdcAdapter) {
 
 
-       logger.with("email", email).info(String.format("Logging in user"), new LogEvent("LOGGING_IN"));
+       logger.with("email", email).info(String.format("Logging in user"), new LogEvent(Events.USER_LOGIN));
        return userService.findOneByEmail(email, mdcAdapter)
                 .thenApplyAsync(user -> {
                     if (user == null) {
@@ -86,7 +87,7 @@ public class LoginServiceImpl implements LoginService {
 
                     logger.with("email", email)
                           .with("user", user)
-                          .info(String.format("found user identified by %s",email), new LogEvent("LOGGING_IN"));
+                          .info(String.format("found user identified by %s",email), new LogEvent(Events.USER_LOGIN));
                     return user;
                 }, taskExecutor)
                .thenApplyAsync(user -> {
@@ -95,7 +96,7 @@ public class LoginServiceImpl implements LoginService {
                    }
 
                    logger.with("email", email)
-                         .debug(String.format("Requesting login token for %s ... ", email), new LogEvent("LOGGING_IN"));
+                         .debug(String.format("Requesting login token for %s ... ", email), new LogEvent(Events.USER_LOGIN));
                    AuthRequestDto authRequestDto = new AuthRequestDto();
                    authRequestDto.setEmail(email);
                    return authorizationApiService.requestToken(authRequestDto ,mdcAdapter.get(CommonConstants.EVENT_KEY),mdcAdapter.get(CommonConstants.TRACE_ID_MDC_KEY));
@@ -133,7 +134,7 @@ public class LoginServiceImpl implements LoginService {
 
 
             logger.with("jti", jti)
-                    .with(CommonConstants.EVENT_KEY, "LOG_OUT")
+                    .with(CommonConstants.EVENT_KEY, Events.USER_LOGOUT)
                     .debug(String.format("Contacting authorization service to delete token with jti %s ...", jti));
             return authorizationApiService
                     .deleteToken(jti, MDC.getMDCAdapter().get(CommonConstants.EVENT_KEY), MDC.getMDCAdapter().get(CommonConstants.TRACE_ID_MDC_KEY))

@@ -1,5 +1,6 @@
 package com.quantal.exchange.users.facades;
 
+import com.quantal.exchange.users.constants.Events;
 import com.quantal.exchange.users.constants.MessageCodes;
 import com.quantal.exchange.users.dto.LoginDto;
 import com.quantal.exchange.users.dto.TokenDto;
@@ -64,7 +65,7 @@ public class LoginFacade extends AbstractBaseFacade {
         String email = loginDto != null ? loginDto.getEmail() : "";
 
         logger.with(EMAIL_KEY, email)
-              .with(EVENT_KEY, "LOGIN")
+              .with(EVENT_KEY, Events.USER_LOGIN)
               .debug(String.format("Logging in user with to: %s", email));
 
         if (loginDto == null) {
@@ -72,7 +73,7 @@ public class LoginFacade extends AbstractBaseFacade {
             ResponseEntity<?> responseEntity = toRESTResponse(null, msg, HttpStatus.BAD_REQUEST);
 
             logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.toString())
-                  .with(com.quantal.javashared.constants.CommonConstants.EVENT_KEY, "LOGIN")
+                  .with(com.quantal.javashared.constants.CommonConstants.EVENT_KEY, Events.USER_LOGIN)
                   .debug(String.format("%s",msg));
             return CompletableFuture.completedFuture(responseEntity);
         }
@@ -82,7 +83,7 @@ public class LoginFacade extends AbstractBaseFacade {
                     TokenDto tokenDto = new TokenDto();
                     tokenDto.setToken(token);
 
-                    logger.with(EVENT_KEY, "LOGIN")
+                    logger.with(EVENT_KEY, Events.USER_LOGIN)
                           .with("token", token)
                           .info(String.format("login successful."));
 
@@ -108,7 +109,7 @@ public class LoginFacade extends AbstractBaseFacade {
     public CompletableFuture<ResponseEntity> logout(Long userId, String authHeader) {
 
         logger.with(USER_KEY, userId)
-              .with(EVENT_KEY, "LOGOUT")
+              .with(EVENT_KEY, Events.USER_LOGOUT)
               .debug(String.format("logging out user with Id %s", userId));
 
         if (StringUtils.isEmpty(authHeader)) {
@@ -116,7 +117,7 @@ public class LoginFacade extends AbstractBaseFacade {
             ResponseEntity responseEntity = toRESTResponse(null, message, HttpStatus.BAD_REQUEST);
 
             logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.value())
-                  .with(EVENT_KEY, "LOGOUT")
+                  .with(EVENT_KEY, Events.USER_LOGOUT)
                   .info(String.format("login failed: %s.", message));
 
             return CompletableFuture.completedFuture(responseEntity);
@@ -132,7 +133,7 @@ public class LoginFacade extends AbstractBaseFacade {
             ResponseEntity responseEntity = toRESTResponse(null, message, HttpStatus.BAD_REQUEST);
 
             logger.with(STATUS_CODE_KEY, HttpStatus.BAD_REQUEST.value())
-                  .with(EVENT_KEY, "LOGOUT")
+                  .with(EVENT_KEY, Events.USER_LOGOUT)
                   .debug(String.format("login failed: %s", message));
 
             return CompletableFuture.completedFuture(responseEntity);

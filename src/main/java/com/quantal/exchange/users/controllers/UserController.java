@@ -1,12 +1,14 @@
 package com.quantal.exchange.users.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quantal.exchange.users.constants.Events;
 import com.quantal.exchange.users.dto.UserDto;
 import com.quantal.exchange.users.enums.PasswordMatchType;
 import com.quantal.exchange.users.facades.UserManagementFacade;
 import com.quantal.exchange.users.jsonviews.LoginView;
 import com.quantal.exchange.users.jsonviews.UserViews;
 import com.quantal.exchange.users.validators.password.PasswordMatches;
+import com.quantal.javashared.constants.CommonConstants;
 import com.quantal.javashared.controller.BaseControllerAsync;
 import com.quantal.javashared.jsonviews.DefaultJsonView;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +59,7 @@ public class UserController extends BaseControllerAsync {
                                                         @Validated
                                                       @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
                                                        UserDto userDto){
+    MDC.put(CommonConstants.EVENT_KEY, Events.USER_CREATE);
     return userManagementFacade
             .save(userDto, MDC.getMDCAdapter())
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
@@ -67,6 +70,7 @@ public class UserController extends BaseControllerAsync {
                                                       @RequestBody
                                                       @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
                                                               UserDto userDto){
+    MDC.put(EVENT_KEY, Events.USER_UPDATE);
     return userManagementFacade
             .updateUser(userId, userDto)
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
@@ -74,6 +78,7 @@ public class UserController extends BaseControllerAsync {
 
   @GetMapping(value="/{userId}")
   public CompletableFuture<ResponseEntity> findUserbyId(@PathVariable Long userId){
+    MDC.put(EVENT_KEY, Events.USER_SEARCH);
     return userManagementFacade
             .findUserById(userId)
             .thenApply(responseEntity -> applyJsonView(responseEntity, UserViews.CreatedAndUpdatedUserView.class, objectMapper));
@@ -81,6 +86,7 @@ public class UserController extends BaseControllerAsync {
 
   @DeleteMapping(value="/{userId}")
   public CompletableFuture<?> deleteUserbyId(@PathVariable Long userId){
+    MDC.put(EVENT_KEY, Events.USER_DELETE);
     return userManagementFacade.deleteByUserId(userId)
             .thenApply(responseEntity -> applyJsonView((ResponseEntity) responseEntity, DefaultJsonView.ResponseDtoView.class, objectMapper));
   }
@@ -97,6 +103,7 @@ public class UserController extends BaseControllerAsync {
 
   @PostMapping(value="/reset-password")
   public CompletableFuture<?> resetPassword(@RequestBody UserDto userDto){
+    MDC.put(CommonConstants.EVENT_KEY, Events.USER_PASSWORD_RESET);
     return userManagementFacade.resetPassword(userDto, MDC.getMDCAdapter())
             .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));
   }
