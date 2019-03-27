@@ -3,6 +3,7 @@
 #. variables.sh
 
 source ./../../scripts/docker-scripts/common_funcs.sh
+check_and_source_file ~/.bash_profile
 
 BUILD_CONTAINER=$1
 COMPOSE_UP_OPTS=$2
