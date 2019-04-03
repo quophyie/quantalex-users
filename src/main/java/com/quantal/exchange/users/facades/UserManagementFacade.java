@@ -185,8 +185,11 @@ public class UserManagementFacade extends AbstractBaseFacade {
               .with(USER_ID_KEY, userId)
               .info("deleting user identified by {}", userId);
         CompletableFuture<?> userCompletableFuture = userService.findOne(userId);
+        String traceId = MDC.get(CommonConstants.TRACE_ID_MDC_KEY);
             return userCompletableFuture.thenCombine(userService.deleteById(userId),  (user, deleted) -> user)
                     .thenApply(user -> {
+                        MDC.put(CommonConstants.TRACE_ID_MDC_KEY, traceId);
+                        MDC.put(CommonConstants.EVENT_KEY, Events.USER_DELETE);
                         logger.with(EVENT_KEY, Events.USER_DELETE)
                                 .with(USER_ID_KEY, userId)
                                 .with(EMAIL_KEY, ((User)user).getEmail())

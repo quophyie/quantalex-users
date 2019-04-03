@@ -17,11 +17,11 @@ import java.util.concurrent.CompletableFuture;
  */
 @EnforceRequiredHeaders
 public interface EmailApiService {
-    @POST("/email")
+    @POST("email")
     @Headers({"Content-Type: application/json"})
     CompletableFuture<EmailResponseDto> sendEmail(@Body EmailRequestDto emailRequestDto);
 
-    @POST("/email/template/{templateName}")
+    @POST("email/template/{templateName}")
     @Headers({"Content-Type: application/json"})
     CompletableFuture<EmailResponseDto> sendEmailByTemplate(@Path("templateName") String templateName, @Body EmailRequestDto emailRequestDto, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 }

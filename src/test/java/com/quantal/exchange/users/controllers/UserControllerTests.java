@@ -70,6 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 //@SpringBootTest(/*webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT/*, classes = UsersApplication.class*/)
 public class UserControllerTests {
 
+    private static final String USERS_ENDPOINT_FMT_STR = "/v1/users%s";
     private String persistedUserFirstName = "updatedUserFirstName";
     private String persistedUserLasttName = "updatedUserLasttName";
     private String persistedUserEmail = "persistedUserEmail@quantal.com";
@@ -127,7 +128,7 @@ public class UserControllerTests {
         given(this.userManagementFacade.getFunnyCat())
                 .willReturn(CompletableFuture.completedFuture(jsonResult));
 
-        MvcResult asyscResult = this.mvc.perform(get("/users/").accept(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        MvcResult asyscResult = this.mvc.perform(get(String.format(USERS_ENDPOINT_FMT_STR, "")).accept(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         mvc.perform(asyncDispatch(asyscResult))
             .andExpect(status().isOk())
@@ -176,7 +177,7 @@ public class UserControllerTests {
                 .willAnswer(invocationOnMock -> CompletableFuture.completedFuture(response));
 
 
-        MvcResult asyncResult = this.mvc.perform(put("/users/{id}", new Object[]{userId})
+        MvcResult asyncResult = this.mvc.perform(put(String.format(USERS_ENDPOINT_FMT_STR, "/{id}"), new Object[]{userId})
 
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(updateData)))
@@ -225,7 +226,7 @@ public class UserControllerTests {
 
 
         MvcResult asyncResult = this.mvc
-                .perform(get("/users/{id}", new Object[]{userId})
+                .perform(get(String.format(USERS_ENDPOINT_FMT_STR, "/{id}"), new Object[]{userId})
                 .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         mvc.perform(asyncDispatch(asyncResult))
@@ -266,7 +267,7 @@ public class UserControllerTests {
 
         MvcResult asyncResult = this
                 .mvc
-                .perform(delete("/users/{id}", new Object[]{userId})
+                .perform(delete(String.format(USERS_ENDPOINT_FMT_STR, "/{id}"), new Object[]{userId})
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andReturn();
 
@@ -311,7 +312,7 @@ public class UserControllerTests {
                     return completableFuture;
                 });
 
-        MvcResult asyscResult = this.mvc.perform(post("/users/")
+        MvcResult asyscResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, ""))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(userDto)))
                 .andReturn();
@@ -368,7 +369,7 @@ public class UserControllerTests {
                     return completableFuture;
                 });
 
-        MvcResult asyncResult = this.mvc.perform(post("/users/forgotten-password")
+        MvcResult asyncResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, "/forgotten-password"))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(userDto)))
                 .andReturn();
@@ -407,7 +408,7 @@ public class UserControllerTests {
                     return completableFuture;
                 });
 
-        MvcResult asyncResult = this.mvc.perform(post("/users/reset-password")
+        MvcResult asyncResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, "/reset-password"))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(userDto)))
                 .andReturn();
@@ -447,7 +448,7 @@ public class UserControllerTests {
                     return completableFuture;
                 });
 
-        MvcResult asyscResult = this.mvc.perform(post("/users/")
+        MvcResult asyscResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, ""))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(createdUserDto)))
                 .andReturn();
@@ -486,7 +487,7 @@ public class UserControllerTests {
                 });
 
         String content = TestUtil.convertObjectToJsonString(createUserDto);
-        MvcResult asyscResult = this.mvc.perform(post("/users/")
+        MvcResult asyscResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, ""))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(content))
                 .andReturn();
@@ -513,7 +514,7 @@ public class UserControllerTests {
             return completableFuture;
         });
         String content = TestUtil.convertObjectToJsonString(userDto);
-        MvcResult asyscResult = this.mvc.perform(post("/users/reset-password")
+        MvcResult asyscResult = this.mvc.perform(post(String.format(USERS_ENDPOINT_FMT_STR, "/reset-password"))
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(content))
                 .andReturn();
@@ -540,7 +541,7 @@ public class UserControllerTests {
         });
 
 
-        MvcResult asyscResult = this.mvc.perform(delete("/users/{userId}", userToDelId)
+        MvcResult asyscResult = this.mvc.perform(delete(String.format(USERS_ENDPOINT_FMT_STR, "/{userId}"), userToDelId)
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andReturn();
 

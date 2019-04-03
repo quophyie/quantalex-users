@@ -21,8 +21,8 @@ services:
       - JWT_TYPE=${JWT_TYPE}
       - JWT_ALGORITHM=${JWT_ALGORITHM}
       - API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT:-http://kong:8001}
-      - AUTHORIZATION_SERVICE_ENDPOINT=${AUTHORIZATION_SERVICE_ENDPOINT:-http://quantal_auth:3000}
-      - EMAIL_SERVICE_ENDPOINT=${EMAIL_SERVICE_ENDPOINT:-http://quantal_email_service:3000}
+      - AUTHORIZATION_SERVICE_ENDPOINT=${AUTHORIZATION_SERVICE_ENDPOINT:-http://quantal_auth:3000/v1/}
+      - EMAIL_SERVICE_ENDPOINT=${EMAIL_SERVICE_ENDPOINT:-http://quantal_email_service:3000/v1/}
     links:
       - postgres_quantal_users
     depends_on:

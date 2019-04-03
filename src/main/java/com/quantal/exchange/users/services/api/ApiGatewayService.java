@@ -35,8 +35,8 @@ public interface ApiGatewayService {
     CompletableFuture<ApiJwtUserCredentialsListResponseDto> getConsumerJwtCredentials(@Path("consumer") String apiUserId, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
 
-    @DELETE("/consumers/{consumer}/jwt/{id}")
-    CompletableFuture<Object> deleteConsumerJwtCredentials(@Path("consumer") String apiUserId, @Path("id")String credentialId, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
+    @DELETE("/consumers/{consumer}/{id}")
+    CompletableFuture<Object> deleteConsumer(@Path("consumer") String apiUserId, @Path("id")String email, @Header(CommonConstants.EVENT_HEADER_KEY) String event, @Header(CommonConstants.TRACE_ID_HEADER_KEY) String traceId);
 
 
 

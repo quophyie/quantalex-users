@@ -37,7 +37,7 @@ import static com.quantal.javashared.constants.CommonConstants.EVENT_KEY;
  */
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/v1/users")
 @Slf4j
 public class UserController extends BaseControllerAsync {
 
@@ -54,7 +54,7 @@ public class UserController extends BaseControllerAsync {
     this.objectMapper = objectMapper;
   }
 
-  @PostMapping(value="/", consumes = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(value="", consumes = MediaType.APPLICATION_JSON_VALUE)
   public CompletableFuture<ResponseEntity> createUser(@RequestBody
                                                         @Validated
                                                       @PasswordMatches (passwordMatchType = PasswordMatchType.ALLOW_NULL_MATCH)
@@ -108,7 +108,7 @@ public class UserController extends BaseControllerAsync {
             .thenApply(responseEntity -> applyJsonView(responseEntity, LoginView.LoginResponse.class, objectMapper));
   }
 
-  @GetMapping(value="/")
+  @GetMapping(value="")
   public CompletableFuture<String> getFunnyCatAsync(){
     return userManagementFacade.getFunnyCat();
   }

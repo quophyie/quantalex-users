@@ -95,7 +95,7 @@ public class LoginControllerTests {
             return CompletableFuture.completedFuture(responseEntity);
         });
 
-        MvcResult asyscResult = this.mvc.perform(post("/login/")
+        MvcResult asyscResult = this.mvc.perform(post("/login")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(loginDto)))
                 .andReturn();
