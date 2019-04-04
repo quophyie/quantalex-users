@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
  * Created by root on 08/06/2017.
  */
 @RestController
-@RequestMapping("")
+@RequestMapping("/v1")
 public class LoginController extends BaseControllerAsync{
 
     private LoginFacade loginFacade;
