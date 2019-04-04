@@ -95,7 +95,7 @@ public class LoginControllerTests {
             return CompletableFuture.completedFuture(responseEntity);
         });
 
-        MvcResult asyscResult = this.mvc.perform(post("/login")
+        MvcResult asyscResult = this.mvc.perform(post("/v1/login")
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(TestUtil.convertObjectToJsonString(loginDto)))
                 .andReturn();
@@ -127,7 +127,7 @@ public class LoginControllerTests {
         });
 
 
-        MvcResult asyscResult = this.mvc.perform(post("/logout/{userId}", userId )
+        MvcResult asyscResult = this.mvc.perform(post("/v1/logout/{userId}", userId )
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .header("Authorization", authHeader)
                 .content(TestUtil.convertObjectToJsonString(loginDto)))
